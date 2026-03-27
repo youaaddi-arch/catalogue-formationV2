@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catalogue Formations Continues 2025 — Paris Nord Business School</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0f;
+  --surface:#14141a;
+  --surface2:#1a1a22;
+  --border:#252530;
+  --text:#e2e2ed;
+  --muted:#6b6b82;
+  --gold:#f0a500;
+  --blue:#4f8ef7;
+  --green:#2ec97e;
+  --pink:#e0519a;
+  --red:#f05c5c;
+  --purple:#a07cf5;
+  --cyan:#38c9d4;
+  --orange:#f07840;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;padding:0;}
+
+/* ── NAV ── */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(12,12,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0;padding:0 32px;height:52px;}
+.topbar-logo{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.04em;margin-right:auto;}
+.nav-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:6px 12px;border-radius:6px;transition:all .15s;white-space:nowrap;}
+.nav-btn:hover,.nav-btn.active{color:var(--text);background:var(--surface2);}
+.nav-btn.active{color:var(--gold);}
+
+/* ── HERO ── */
+.hero{padding:56px 32px 40px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end;}
+.hero-left h1{font-family:'Syne',sans-serif;font-size:clamp(30px,4.5vw,54px);font-weight:800;line-height:1.0;letter-spacing:-1.5px;color:#fff;}
+.hero-left h1 em{color:var(--gold);font-style:normal;}
+.hero-sub{margin-top:12px;font-size:15px;color:var(--muted);max-width:560px;line-height:1.7;}
+.hero-kpis{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+.hero-kpi{text-align:right;}
+.hero-kpi-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#fff;line-height:1;}
+.hero-kpi-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 32px;}
+.tab{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);padding:14px 18px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:#fff;border-bottom-color:var(--gold);}
+
+/* ── SECTIONS ── */
+.page{display:none;padding:32px;}
+.page.active{display:block;}
+
+/* ── MARCHÉ ── */
+.market-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px;}
+.market-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;}
+.market-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.mc-construction::before{background:var(--orange);}
+.mc-hcr::before{background:var(--green);}
+.mc-transport::before{background:var(--blue);}
+.mc-cyber::before{background:var(--purple);}
+.mc-ia::before{background:var(--red);}
+.mc-num::before{background:var(--cyan);}
+.market-card h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;}
+.market-card .mc-stat{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin-bottom:4px;}
+.mc-construction .mc-stat{color:var(--orange);}
+.mc-hcr .mc-stat{color:var(--green);}
+.mc-transport .mc-stat{color:var(--blue);}
+.mc-cyber .mc-stat{color:var(--purple);}
+.mc-ia .mc-stat{color:var(--red);}
+.mc-num .mc-stat{color:var(--cyan);}
+.market-card p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px;}
+.tag-mini{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;margin:2px;font-weight:500;}
+.t-orange{background:rgba(240,120,64,.15);color:#f9a87a;border:1px solid rgba(240,120,64,.25);}
+.t-green{background:rgba(46,201,126,.12);color:#4debb6;border:1px solid rgba(46,201,126,.2);}
+.t-blue{background:rgba(79,142,247,.12);color:#7eb0ff;border:1px solid rgba(79,142,247,.2);}
+.t-purple{background:rgba(160,124,245,.12);color:#c4abff;border:1px solid rgba(160,124,245,.2);}
+.t-red{background:rgba(240,92,92,.12);color:#ff9090;border:1px solid rgba(240,92,92,.2);}
+.t-cyan{background:rgba(56,201,212,.12);color:#6be5ed;border:1px solid rgba(56,201,212,.2);}
+.t-gold{background:rgba(240,165,0,.12);color:#ffc853;border:1px solid rgba(240,165,0,.2);}
+.t-pink{background:rgba(224,81,154,.12);color:#f590c4;border:1px solid rgba(224,81,154,.2);}
+.t-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+
+.insight-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:var(--muted);line-height:1.7;}
+.insight-box strong{color:var(--text);}
+
+/* ── CATALOGUE ── */
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:24px;}
+.search-input{flex:1;min-width:200px;max-width:340px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
+.search-input:focus{border-color:var(--blue);}
+.search-input::placeholder{color:var(--muted);}
+.filter-btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.filter-btn:hover,.filter-btn.active{color:#fff;border-color:var(--blue);background:rgba(79,142,247,.1);}
+.filter-btn.active{color:var(--blue);}
+
+.section-block{margin-bottom:32px;animation:fadeUp .4s ease forwards;opacity:0;}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0);}}
+.section-block{transform:translateY(12px);}
+
+.sec-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.sec-num{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);min-width:24px;}
+.sec-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sec-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff;flex:1;}
+.sec-market{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;border:1px solid;}
+.sec-hot{background:rgba(240,92,92,.1);color:#ff9090;border-color:rgba(240,92,92,.25);}
+.sec-growing{background:rgba(46,201,126,.1);color:#4debb6;border-color:rgba(46,201,126,.2);}
+.sec-count{font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;}
+
+.table-wrap{border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+table{width:100%;border-collapse:collapse;min-width:600px;}
+table{display:block;overflow-x:auto;}
+thead th{background:var(--surface);padding:10px 14px;text-align:left;font-family:'Syne',sans-serif;font-size:10px;font-weight:600;letter-spacing:.07em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(37,37,48,.7);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr.hidden{display:none;}
+td{padding:10px 14px;vertical-align:middle;}
+td.num{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--muted);width:36px;}
+td.name{font-size:13px;font-weight:500;color:var(--text);min-width:200px;}
+td.demand{font-size:12px;min-width:80px;}
+
+.cert-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:5px;white-space:nowrap;}
+.cert-rs{background:rgba(79,142,247,.12);color:#7eb0ff;border:1px solid rgba(79,142,247,.2);}
+.cert-norm{background:rgba(46,201,126,.1);color:#4debb6;border:1px solid rgba(46,201,126,.18);}
+.cert-none{font-size:12px;color:var(--muted);}
+
+.fin-row{display:flex;gap:4px;flex-wrap:wrap;}
+.fin-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;white-space:nowrap;}
+.fin-cpf{background:rgba(240,165,0,.13);color:#ffc853;border:1px solid rgba(240,165,0,.22);}
+.fin-opco{background:rgba(160,124,245,.12);color:#c4abff;border:1px solid rgba(160,124,245,.2);}
+.fin-france{background:rgba(46,201,126,.1);color:#4debb6;border:1px solid rgba(46,201,126,.18);}
+.fin-agef{background:rgba(224,81,154,.1);color:#f590c4;border:1px solid rgba(224,81,154,.18);}
+
+.demand-hot{color:#ff9090;font-weight:500;}
+.demand-high{color:#ffc853;font-weight:500;}
+.demand-growing{color:#4debb6;font-weight:500;}
+.demand-std{color:var(--muted);}
+
+.empty-msg{text-align:center;padding:48px;color:var(--muted);font-size:14px;display:none;}
+.empty-msg.vis{display:block;}
+
+/* COLOR DOTS */
+.d-gold{background:var(--gold);}
+.d-blue{background:var(--blue);}
+.d-green{background:var(--green);}
+.d-purple{background:var(--purple);}
+.d-red{background:var(--red);}
+.d-cyan{background:var(--cyan);}
+.d-orange{background:var(--orange);}
+.d-pink{background:var(--pink);}
+.d-yellow{background:#facc15;}
+.d-teal{background:#14b8a6;}
+.d-lime{background:#84cc16;}
+.d-indigo{background:#818cf8;}
+.d-rose{background:#fb7185;}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);align-items:center;}
+.legend strong{color:var(--text);font-size:12px;margin-right:3px;}
+
+/* STATS BAND */
+.stats-band{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:32px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#fff;line-height:1;}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px;}
+
+@media(max-width:600px){
+  .hero{grid-template-columns:1fr;}
+  .hero-kpis{align-items:flex-start;flex-direction:row;flex-wrap:wrap;}
+  .tabs{overflow-x:auto;}
+}
+@media print{
+  .topbar,.tabs,.controls,.legend{display:none!important;}
+  .page{display:block!important;}
+  body{background:#fff;color:#111;padding:20px;}
+  .section-block{opacity:1;transform:none;animation:none;}
+  table{display:table;overflow-x:visible;}
+  .market-card,.stat-card{background:#f5f5f5;border-color:#ddd;}
+  .sec-title,.stat-val,.mc-stat,.hero-left h1{color:#111!important;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <span class="topbar-logo">PNBS · Formations Continues 2025</span>
+  <button class="nav-btn active" onclick="showTab('catalogue',this)">Catalogue</button>
+  <button class="nav-btn" onclick="showTab('marche',this)">Analyse marché</button>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <h1>Catalogue<br><em>Formations Continues</em><br>2025</h1>
+    <p class="hero-sub">Développement des compétences salariés · Certifications reconnues RS / RNCP · Plan de développement des compétences · CPF · OPCO<br>
+    <strong style="color:var(--gold)">Paris Nord Business School</strong></p>
+  </div>
+  <div class="hero-kpis">
+    <div class="hero-kpi"><div class="hero-kpi-val">110</div><div class="hero-kpi-lbl">formations</div></div>
+    <div class="hero-kpi"><div class="hero-kpi-val">13</div><div class="hero-kpi-lbl">domaines</div></div>
+    <div class="hero-kpi"><div class="hero-kpi-val">CPF+OPCO</div><div class="hero-kpi-lbl">financements</div></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="showTab('catalogue',this)">📋 Catalogue complet</button>
+  <button class="tab" onclick="showTab('marche',this)">📊 Analyse marché</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 1 : CATALOGUE
+══════════════════════════════════════════ -->
+<div id="page-catalogue" class="page active" style="padding:32px;">
+
+<div class="stats-band">
+  <div class="stat-card"><div class="stat-val">110</div><div class="stat-lbl">Formations au catalogue</div></div>
+  <div class="stat-card"><div class="stat-val">13</div><div class="stat-lbl">Domaines couverts</div></div>
+  <div class="stat-card"><div class="stat-val">32</div><div class="stat-lbl">Éligibles CPF</div></div>
+  <div class="stat-card"><div class="stat-val">110</div><div class="stat-lbl">Finançables OPCO / PDC</div></div>
+  <div class="stat-card"><div class="stat-val">22</div><div class="stat-lbl">Certifications RS / normes</div></div>
+</div>
+
+<div class="legend">
+  <strong>Financement :</strong>
+  <span class="fin-badge fin-cpf">CPF</span> Compte Personnel de Formation &nbsp;|&nbsp;
+  <span class="fin-badge fin-opco">OPCO</span> Plan Développement Compétences &nbsp;|&nbsp;
+  <span class="fin-badge fin-france">France Travail</span> &nbsp;|&nbsp;
+  <span class="fin-badge fin-agef">AGEFIPH</span> Handicap
+  &nbsp;&nbsp;<strong>Demande marché :</strong>
+  <span class="demand-hot">●</span> Forte &nbsp;<span class="demand-high">●</span> Élevée &nbsp;<span class="demand-growing">●</span> En hausse &nbsp;<span class="demand-std">●</span> Stable
+</div>
+
+<div class="controls">
+  <input type="text" class="search-input" id="searchInput" placeholder="🔍  Rechercher une formation…" oninput="filterRows()">
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Tous</button>
+  <button class="filter-btn" data-filter="cpf" onclick="setFilter('cpf',this)">CPF uniquement</button>
+  <button class="filter-btn" data-filter="certified" onclick="setFilter('certified',this)">Certifiantes</button>
+  <button class="filter-btn" data-filter="hot" onclick="setFilter('hot',this)">Forte demande</button>
+</div>
+
+<div id="emptyMsg" class="empty-msg">Aucune formation ne correspond à votre recherche.</div>
+
+<!-- ──── 01 Management ──── -->
+<div class="section-block" style="animation-delay:.04s">
+  <div class="sec-header">
+    <span class="sec-num">01</span><span class="sec-dot d-gold"></span>
+    <span class="sec-title">Management &amp; Encadrement</span>
+    <span class="sec-market sec-hot">Forte demande</span>
+    <span class="sec-count">9 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">01</td><td class="name">Management d'équipe</td><td><span class="cert-badge cert-rs">RS5366</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">02</td><td class="name">Leadership managérial</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">03</td><td class="name">Gestion des conflits</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">04</td><td class="name">Animation de réunion</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">05</td><td class="name">Conduite du changement</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">06</td><td class="name">Management à distance</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">07</td><td class="name">Communication managériale</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">08</td><td class="name">Entretien professionnel obligatoire</td><td><span class="cert-badge cert-rs">RS5368</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">09</td><td class="name">Manager un projet</td><td><span class="cert-badge cert-rs">RS5367</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 02 Commerce ──── -->
+<div class="section-block" style="animation-delay:.07s">
+  <div class="sec-header">
+    <span class="sec-num">02</span><span class="sec-dot d-blue"></span>
+    <span class="sec-title">Commerce &amp; Relation Client</span>
+    <span class="sec-market sec-hot">Forte demande</span>
+    <span class="sec-count">8 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">10</td><td class="name">Techniques de vente</td><td><span class="cert-badge cert-rs">RS5444</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">11</td><td class="name">Négociation commerciale</td><td><span class="cert-badge cert-rs">RS5444</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">12</td><td class="name">Relation client</td><td><span class="cert-badge cert-rs">RS5370</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">13</td><td class="name">Prospection commerciale</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">14</td><td class="name">Gestion des réclamations</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">15</td><td class="name">Fidélisation client</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">16</td><td class="name">Vente digitale</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">17</td><td class="name">Merchandising</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 03 RH ──── -->
+<div class="section-block" style="animation-delay:.10s">
+  <div class="sec-header">
+    <span class="sec-num">03</span><span class="sec-dot d-green"></span>
+    <span class="sec-title">Ressources Humaines</span>
+    <span class="sec-market sec-growing">En hausse</span>
+    <span class="sec-count">7 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-hot="1"><td class="num">18</td><td class="name">Droit du travail — fondamentaux</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">19</td><td class="name">Recrutement et intégration</td><td><span class="cert-badge cert-rs">RS6037</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">20</td><td class="name">Gestion administrative du personnel</td><td><span class="cert-badge cert-rs">RS6038</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">21</td><td class="name">Entretien professionnel</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">22</td><td class="name">Gestion des compétences (GEPP)</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">23</td><td class="name">Qualité de vie au travail (QVT)</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">24</td><td class="name">Non-discrimination à l'embauche</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 04 Bureautique ──── -->
+<div class="section-block" style="animation-delay:.13s">
+  <div class="sec-header">
+    <span class="sec-num">04</span><span class="sec-dot d-purple"></span>
+    <span class="sec-title">Bureautique &amp; Numérique</span>
+    <span class="sec-market sec-hot">Forte demande</span>
+    <span class="sec-count">9 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">25</td><td class="name">Excel — débutant</td><td><span class="cert-badge cert-rs">TOSA Excel RS5252</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">26</td><td class="name">Excel — intermédiaire</td><td><span class="cert-badge cert-rs">TOSA Excel RS5252</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">27</td><td class="name">Excel — avancé</td><td><span class="cert-badge cert-rs">TOSA Excel RS5252</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">28</td><td class="name">Word professionnel</td><td><span class="cert-badge cert-rs">TOSA Word RS6198</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">29</td><td class="name">PowerPoint professionnel</td><td><span class="cert-badge cert-rs">TOSA PPT RS6199</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">30</td><td class="name">Outlook professionnel</td><td><span class="cert-badge cert-rs">ICDL RS6559</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">31</td><td class="name">Google Workspace</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">32</td><td class="name">Tableaux de bord Excel</td><td><span class="cert-badge cert-rs">TOSA Excel RS5252</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">33</td><td class="name">Power BI — initiation</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 05 IA ──── -->
+<div class="section-block" style="animation-delay:.16s">
+  <div class="sec-header">
+    <span class="sec-num">05</span><span class="sec-dot d-red"></span>
+    <span class="sec-title">Intelligence Artificielle</span>
+    <span class="sec-market sec-hot">🔥 Explosion 2024–2025</span>
+    <span class="sec-count">7 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-hot="1"><td class="num">34</td><td class="name">Initiation à l'intelligence artificielle</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">35</td><td class="name">Prompt engineering</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">36</td><td class="name">Automatisation des tâches avec IA</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">37</td><td class="name">IA appliquée aux métiers</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">38</td><td class="name">Création de contenus avec IA</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">39</td><td class="name">Analyse de données avec IA</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">40</td><td class="name">Enjeux éthiques de l'IA</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 06 Anglais ──── -->
+<div class="section-block" style="animation-delay:.19s">
+  <div class="sec-header">
+    <span class="sec-num">06</span><span class="sec-dot d-cyan"></span>
+    <span class="sec-title">Anglais Professionnel</span>
+    <span class="sec-market sec-hot">Top 5 CPF 2025</span>
+    <span class="sec-count">6 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">41</td><td class="name">Anglais professionnel débutant (A1)</td><td><span class="cert-badge cert-rs">TOEIC RS6151</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">42</td><td class="name">Anglais professionnel élémentaire (A2)</td><td><span class="cert-badge cert-rs">TOEIC RS6151</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">43</td><td class="name">Anglais professionnel intermédiaire (B1)</td><td><span class="cert-badge cert-rs">Linguaskill RS6147</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">44</td><td class="name">Anglais professionnel avancé (B2)</td><td><span class="cert-badge cert-rs">TOEIC S&amp;W RS6152</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">45</td><td class="name">Anglais métier</td><td><span class="cert-badge cert-rs">CLOE RS6435</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cpf="1" data-cert="1"><td class="num">46</td><td class="name">Anglais pour l'emploi</td><td><span class="cert-badge cert-rs">TOEIC RS6151</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span></div></td><td class="demand demand-high">Élevée</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 07 Sécurité ──── -->
+<div class="section-block" style="animation-delay:.22s">
+  <div class="sec-header">
+    <span class="sec-num">07</span><span class="sec-dot d-orange"></span>
+    <span class="sec-title">Hygiène &amp; Sécurité au Travail</span>
+    <span class="sec-market sec-hot">Forte demande</span>
+    <span class="sec-count">6 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">47</td><td class="name">Sauveteur Secouriste du Travail (SST)</td><td><span class="cert-badge cert-norm">SST INRS</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">48</td><td class="name">Gestes et postures / prévention TMS</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">49</td><td class="name">Prévention des risques professionnels</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">50</td><td class="name">Prévention des TMS</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">51</td><td class="name">Équipier première intervention incendie (EPI)</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">52</td><td class="name">Évacuation incendie</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 08 BTP ──── -->
+<div class="section-block" style="animation-delay:.25s">
+  <div class="sec-header">
+    <span class="sec-num">08</span><span class="sec-dot d-yellow"></span>
+    <span class="sec-title">Bâtiment &amp; Travaux Publics (BTP)</span>
+    <span class="sec-market sec-hot">Secteur n°1 recrutement 2025</span>
+    <span class="sec-count">10 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">53</td><td class="name">AIPR — Autorisation Intervention Proximité Réseaux</td><td><span class="cert-badge cert-norm">AIPR réglementaire</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">54</td><td class="name">Travail en hauteur</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">55</td><td class="name">Port du harnais</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">56</td><td class="name">Lecture de plans</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">57</td><td class="name">Métrés</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">58</td><td class="name">Organisation de chantier</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-growing="1"><td class="num">59</td><td class="name">Introduction au BIM / Maquette numérique</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">60</td><td class="name">Coordination d'équipe chantier</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">61</td><td class="name">Montage échafaudage</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cert="1" data-hot="1"><td class="num">62</td><td class="name">Amiante SS4</td><td><span class="cert-badge cert-norm">SS4 réglementaire</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 09 Esthétique ──── -->
+<div class="section-block" style="animation-delay:.28s">
+  <div class="sec-header">
+    <span class="sec-num">09</span><span class="sec-dot d-pink"></span>
+    <span class="sec-title">Esthétique &amp; Bien-être</span>
+    <span class="sec-market sec-growing">En croissance</span>
+    <span class="sec-count">8 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-hot="1"><td class="num">63</td><td class="name">Hygiène en institut</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">64</td><td class="name">Techniques soins visage</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">65</td><td class="name">Techniques soins corps</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">66</td><td class="name">Épilation professionnelle</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">67</td><td class="name">Extensions de cils</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">68</td><td class="name">Nail art</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">69</td><td class="name">Vente en institut</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">70</td><td class="name">Développement activité esthétique</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 10 Électricité ──── -->
+<div class="section-block" style="animation-delay:.31s">
+  <div class="sec-header">
+    <span class="sec-num">10</span><span class="sec-dot d-yellow"></span>
+    <span class="sec-title">Électricité — Habilitations</span>
+    <span class="sec-market sec-hot">Forte demande BTP / industrie</span>
+    <span class="sec-count">12 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">71</td><td class="name">Habilitation électrique B0 H0 H0V</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">72</td><td class="name">Habilitation électrique BS BE</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">73</td><td class="name">Habilitation électrique B1 B2</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">74</td><td class="name">Habilitation électrique BR</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cpf="1" data-cert="1" data-hot="1"><td class="num">75</td><td class="name">Habilitation électrique BC</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-cpf">CPF</span><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cert="1"><td class="num">76</td><td class="name">Recyclage habilitation B0 H0 H0V</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cert="1"><td class="num">77</td><td class="name">Recyclage habilitation BS BE</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cert="1"><td class="num">78</td><td class="name">Recyclage habilitation BR</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-cert="1"><td class="num">79</td><td class="name">Recyclage habilitation BC</td><td><span class="cert-badge cert-norm">NF C 18-510</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">80</td><td class="name">Lecture de schémas électriques</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">81</td><td class="name">Maintenance électrique niveau 1</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">82</td><td class="name">Maintenance électrique niveau 2</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 11 Apprentissage & Inclusion ──── -->
+<div class="section-block" style="animation-delay:.34s">
+  <div class="sec-header">
+    <span class="sec-num">11</span><span class="sec-dot d-teal"></span>
+    <span class="sec-title">Apprentissage &amp; Inclusion</span>
+    <span class="sec-market sec-growing">En hausse</span>
+    <span class="sec-count">12 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-hot="1"><td class="num">83</td><td class="name">Formation Maître d'apprentissage / Tuteur en entreprise</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span><span class="fin-badge fin-france">France Travail</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">84</td><td class="name">Actualisation des compétences du tuteur</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr><td class="num">85</td><td class="name">Référent handicap — rôle et missions</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span><span class="fin-badge fin-agef">AGEFIPH</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">86</td><td class="name">Accueillir un apprenant en situation de handicap</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span><span class="fin-badge fin-agef">AGEFIPH</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">87</td><td class="name">Non-discrimination à l'embauche</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">88</td><td class="name">Égalité professionnelle femmes-hommes</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">89</td><td class="name">Prévention des discriminations en entreprise</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">90</td><td class="name">Diversité et inclusion en milieu professionnel</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">91</td><td class="name">Sensibilisation au harcèlement et aux violences</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr><td class="num">92</td><td class="name">Accompagnement des publics à besoins spécifiques</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">93</td><td class="name">Prévention des ruptures en apprentissage</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+      <tr><td class="num">94</td><td class="name">Posture du tuteur face à la diversité des publics</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-std">Stable</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 12 Hôtellerie-Restauration (NOUVEAU) ──── -->
+<div class="section-block" style="animation-delay:.37s">
+  <div class="sec-header">
+    <span class="sec-num">12</span><span class="sec-dot d-lime"></span>
+    <span class="sec-title">Hôtellerie &amp; Restauration (HCR)</span>
+    <span class="sec-market sec-hot">🆕 1er recruteur de France</span>
+    <span class="sec-count">8 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-cert="1" data-hot="1"><td class="num">95</td><td class="name">Hygiène alimentaire HACCP (14h)</td><td><span class="cert-badge cert-norm">Attestation réglementaire</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span><span class="fin-badge fin-france">AIF</span></div></td><td class="demand demand-hot">Forte — obligation légale</td></tr>
+      <tr data-cert="1" data-hot="1"><td class="num">96</td><td class="name">Permis d'exploitation (vente d'alcool)</td><td><span class="cert-badge cert-norm">Attestation réglementaire</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-hot">Forte — obligation légale</td></tr>
+      <tr data-cert="1" data-hot="1"><td class="num">97</td><td class="name">CQP Serveur en restauration</td><td><span class="cert-badge cert-norm">CQP branche HCR</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cert="1" data-hot="1"><td class="num">98</td><td class="name">CQP Cuisinier</td><td><span class="cert-badge cert-norm">CQP branche HCR</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-cert="1"><td class="num">99</td><td class="name">CQP Réceptionniste hôtellerie</td><td><span class="cert-badge cert-norm">CQP branche HCR</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+      <tr data-hot="1"><td class="num">100</td><td class="name">Management en restauration / encadrement CHR</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr><td class="num">101</td><td class="name">Gestion des allergènes alimentaires</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-growing">En hausse — loi Egalim</td></tr>
+      <tr><td class="num">102</td><td class="name">Permis de former HCR (tuteurs — 14h)</td><td><span class="cert-badge cert-norm">Obligatoire tuteurs HCR</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO AKTO</span></div></td><td class="demand demand-high">Élevée</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ──── 13 Cybersécurité (NOUVEAU) ──── -->
+<div class="section-block" style="animation-delay:.40s">
+  <div class="sec-header">
+    <span class="sec-num">13</span><span class="sec-dot d-indigo"></span>
+    <span class="sec-title">Cybersécurité</span>
+    <span class="sec-market sec-hot">🆕 Secteur en explosion</span>
+    <span class="sec-count">8 formations</span>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Formation</th><th>Certification</th><th>Financement</th><th>Demande marché</th></tr></thead>
+    <tbody>
+      <tr data-hot="1"><td class="num">103</td><td class="name">Sensibilisation cybersécurité pour tous les collaborateurs</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte — tous secteurs</td></tr>
+      <tr data-hot="1"><td class="num">104</td><td class="name">Cyber-hygiène et bonnes pratiques numériques</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">105</td><td class="name">Phishing, ransomware — reconnaître et réagir</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-hot="1"><td class="num">106</td><td class="name">RGPD — protection des données personnelles</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte — obligation légale</td></tr>
+      <tr data-cert="1" data-hot="1"><td class="num">107</td><td class="name">DPO — Délégué à la Protection des Données (fondamentaux)</td><td><span class="cert-badge cert-rs">RS DPO</span></td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-hot">Forte</td></tr>
+      <tr data-growing="1"><td class="num">108</td><td class="name">Sécurité des réseaux et des systèmes d'information</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr data-growing="1"><td class="num">109</td><td class="name">Gestion des incidents cyber et plan de réponse</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span></div></td><td class="demand demand-growing">En hausse</td></tr>
+      <tr data-growing="1"><td class="num">110</td><td class="name">Introduction à la sécurité offensive (ethical hacking)</td><td class="cert-none">—</td><td><div class="fin-row"><span class="fin-badge fin-opco">OPCO</span><span class="fin-badge fin-france">France Travail</span></div></td><td class="demand demand-growing">En hausse — profils IT</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+</div><!-- end page-catalogue -->
+
+
+<!-- ══════════════════════════════════════════
+     PAGE 2 : ANALYSE MARCHÉ
+══════════════════════════════════════════ -->
+<div id="page-marche" class="page" style="padding:32px;">
+
+  <div class="insight-box">
+    <strong>Contexte 2025 :</strong> Le marché de la formation professionnelle représente <strong>15,1 milliards d'euros</strong> d'investissement (France Compétences). 1,4 million de formations CPF ont été débutées en 2024 (+4% vs 2023). 98% des salariés considèrent la montée en compétences comme un enjeu clé. Les secteurs du BTP, de l'HCR et du numérique concentrent la majorité des besoins en tension.
+  </div>
+
+  <div class="market-grid">
+
+    <div class="market-card mc-construction">
+      <div class="mc-stat">167 000</div>
+      <h3>Construction / BTP — Secteur n°1 recrutement</h3>
+      <p>71,5% des entreprises BTP déclarent des difficultés de recrutement — le taux le plus élevé de tous les secteurs. 345 154 offres d'emploi publiées en 1 an (France Travail 2025). Constructys a formé 332 734 stagiaires en 2024.</p>
+      <div>
+        <span class="tag-mini t-orange">Habilitations électriques</span>
+        <span class="tag-mini t-orange">CACES</span>
+        <span class="tag-mini t-orange">FEEBAT rénovation énergétique</span>
+        <span class="tag-mini t-orange">BIM numérique</span>
+        <span class="tag-mini t-orange">SST / sécurité chantier</span>
+        <span class="tag-mini t-orange">Amiante SS4</span>
+      </div>
+    </div>
+
+    <div class="market-card mc-hcr">
+      <div class="mc-stat">900 000+</div>
+      <h3>Hôtellerie-Restauration — 1er recruteur de France</h3>
+      <p>97% des établissements HCR sont des TPE. Secteur structurellement en tension, OPCO AKTO gère 1,3 milliard d'euros de budget formation. HACCP, CQP et management CHR sont les formations les plus financées à 100% par AKTO.</p>
+      <div>
+        <span class="tag-mini t-green">HACCP obligatoire</span>
+        <span class="tag-mini t-green">Permis d'exploitation</span>
+        <span class="tag-mini t-green">CQP Serveur / Cuisinier</span>
+        <span class="tag-mini t-green">Management CHR</span>
+        <span class="tag-mini t-green">Allergènes (Egalim)</span>
+      </div>
+    </div>
+
+    <div class="market-card mc-transport">
+      <div class="mc-stat">44,6%</div>
+      <h3>Transport &amp; Logistique — N°1 CPF 2024</h3>
+      <p>44,6% de toutes les formations CPF débutées en 2024 concernent le secteur transport. Le permis B représente 309 300 dossiers financés. Pénurie structurelle de chauffeurs-routiers (permis C, CACES logistique).</p>
+      <div>
+        <span class="tag-mini t-blue">Permis B — 309 300 dossiers</span>
+        <span class="tag-mini t-blue">Permis C poids lourd</span>
+        <span class="tag-mini t-blue">CACES logistique R489</span>
+        <span class="tag-mini t-blue">FCO conducteur</span>
+      </div>
+    </div>
+
+    <div class="market-card mc-cyber">
+      <div class="mc-stat">54%</div>
+      <h3>Cybersécurité — Secteur en explosion</h3>
+      <p>54% des entreprises françaises ont été victimes de cyberattaques en 2021, dont 69% sont des PME. Le coût médian d'une attaque peut atteindre 50 000€. Thématique prioritaire de tous les OPCO en 2025. Demande explosive pour la sensibilisation et le RGPD.</p>
+      <div>
+        <span class="tag-mini t-purple">Sensibilisation collaborateurs</span>
+        <span class="tag-mini t-purple">RGPD / DPO</span>
+        <span class="tag-mini t-purple">Phishing / Ransomware</span>
+        <span class="tag-mini t-purple">Cyber-hygiène</span>
+        <span class="tag-mini t-purple">Gestion incidents</span>
+      </div>
+    </div>
+
+    <div class="market-card mc-ia">
+      <div class="mc-stat">38%</div>
+      <h3>Intelligence Artificielle — Croissance record</h3>
+      <p>38% des actifs ont suivi une formation liée à l'IA dans les 12 derniers mois (baromètre 2025). Le WEF estime que 44% des compétences actuelles seront transformées d'ici 2030. Thématique prioritaire de tous les OPCO en 2025.</p>
+      <div>
+        <span class="tag-mini t-red">Initiation IA</span>
+        <span class="tag-mini t-red">Prompt engineering</span>
+        <span class="tag-mini t-red">Automatisation tâches</span>
+        <span class="tag-mini t-red">IA appliquée aux métiers</span>
+      </div>
+    </div>
+
+    <div class="market-card mc-num">
+      <div class="mc-stat">88%</div>
+      <h3>Bureautique &amp; Numérique — Incontournable</h3>
+      <p>88% des formations bureautique/informatique se font à distance. Excel reste la formation certifiante TOSA la plus vendue en France. Le CPF finance intégralement les certifications TOSA, ICDL et TOEIC — très forte demande tous secteurs confondus.</p>
+      <div>
+        <span class="tag-mini t-cyan">Excel / TOSA</span>
+        <span class="tag-mini t-cyan">TOEIC anglais</span>
+        <span class="tag-mini t-cyan">Power BI</span>
+        <span class="tag-mini t-cyan">Certifications numériques</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="insight-box" style="border-left-color:var(--purple);">
+    <strong>Dispositifs de financement 2025 :</strong><br>
+    <strong>CPF</strong> — 500€/an (800€ si peu qualifié), ticket modérateur 102,23€. Réservé aux formations certifiantes RS/RNCP. &nbsp;|&nbsp;
+    <strong>Plan PDC (OPCO)</strong> — financement employeur via l'OPCO, accessible à tout salarié, y compris formations non certifiantes. &nbsp;|&nbsp;
+    <strong>Pro-A</strong> — reconversion ou promotion interne, maintien du salaire. &nbsp;|&nbsp;
+    <strong>POEC/POEI</strong> — former avant embauche, co-financement OPCO + France Travail. &nbsp;|&nbsp;
+    <strong>AGEFIPH</strong> — formations liées au handicap et à l'inclusion. &nbsp;|&nbsp;
+    <strong>France Travail (AIF)</strong> — demandeurs d'emploi, HACCP, formations courtes en tension.
+  </div>
+
+  <div class="insight-box" style="border-left-color:var(--green);">
+    <strong>Positionnement PNBS :</strong> Avec 13 domaines couverts et 110 formations, le catalogue est aligné sur les secteurs les plus en tension du marché 2025. Les 2 nouvelles familles ajoutées — <strong>HCR (restauration/hôtellerie)</strong> et <strong>Cybersécurité</strong> — répondent directement aux priorités OPCO 2025 et aux besoins de recrutement des entreprises partenaires. Les formations certifiantes (RS, normes réglementaires) constituent un levier CPF fort pour capter les financements individuels des salariés.
+  </div>
+
+</div><!-- end page-marche -->
+
+<script>
+let activeFilter = 'all';
+
+function showTab(tab, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab, .nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.querySelectorAll('[onclick*="' + tab + '"]').forEach(b => b.classList.add('active'));
+}
+
+function setFilter(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterRows();
+}
+
+function filterRows() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  let total = 0;
+  document.querySelectorAll('tbody tr').forEach(row => {
+    const name = row.querySelector('.name')?.textContent.toLowerCase() || '';
+    const cert = row.querySelector('.cert-badge')?.textContent.toLowerCase() || '';
+    const matchSearch = !q || name.includes(q) || cert.includes(q);
+    const matchCpf    = activeFilter !== 'cpf'        || row.dataset.cpf === '1';
+    const matchCert   = activeFilter !== 'certified'  || row.dataset.cert === '1';
+    const matchHot    = activeFilter !== 'hot'        || row.dataset.hot === '1';
+    const visible = matchSearch && matchCpf && matchCert && matchHot;
+    row.classList.toggle('hidden', !visible);
+    if (visible) total++;
+  });
+  document.querySelectorAll('.section-block').forEach(sec => {
+    const vis = sec.querySelectorAll('tbody tr:not(.hidden)').length;
+    sec.style.display = vis === 0 ? 'none' : '';
+  });
+  document.getElementById('emptyMsg').classList.toggle('vis', total === 0);
+}
+</script>
+</body>
+</html>
