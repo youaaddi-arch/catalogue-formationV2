@@ -183,88 +183,76 @@ class DriveScanner:
 
     def scanner_drive_source(self) -> tuple:
         """
-        Scanne le Drive SOURCE (PROMOTIONS PNBS) pour trouver les dossiers
-        d'apprenants. Cherche en profondeur : promotions → classes → apprentis.
+        Scanne le Drive SOURCE (PROMOTIONS PNBS) en cherchant directement
+        les dossiers par nom d'apprenti via l'API de recherche Drive.
 
-        Retourne (dossiers_apprenants, fichiers_planning_par_classe).
-        - dossiers_apprenants: dict {nom: {id, name, parent_name, classe_name}}
-        - fichiers_planning: list de fichiers planning trouvés au niveau classe
+        Retourne (dossiers_apprenants, fichiers_planning).
         """
         dossiers = {}
         fichiers_planning = []
 
         try:
             drive_id = config.DRIVE_SOURCE_ID
-            # Niveau 1 : dossiers racine du Drive (promotions)
-            racine = self.lister_sous_dossiers(drive_id, drive_id)
-            logger.info(f"Drive SOURCE: {len(racine)} dossiers racine")
 
-            for promo in racine:
-                logger.info(f"  Promotion: {promo['name']}")
-                # Niveau 2 : sous-dossiers (classes ou apprentis directs)
-                niveau2 = self.lister_sous_dossiers(promo["id"], drive_id)
+            # Méthode 1 : Recherche directe par nom d'apprenti
+            logger.info("Drive SOURCE: recherche directe des dossiers d'apprentis...")
+            for nom in config.APPRENTIS:
+                # Extraire les mots du nom (au moins 2 caractères)
+                mots = [m for m in nom.split() if len(m) > 1]
+                if not mots:
+                    continue
 
-                for item2 in niveau2:
-                    # Vérifier si c'est une classe (contient des sous-dossiers)
-                    niveau3 = self.lister_sous_dossiers(item2["id"], drive_id)
+                # Chercher un dossier dont le nom contient les mots du nom
+                # Utiliser les 2 premiers mots significatifs pour la recherche
+                mots_recherche = mots[:2]
+                query_parts = []
+                for mot in mots_recherche:
+                    mot_escaped = self._escape_query(mot)
+                    query_parts.append(f"name contains '{mot_escaped}'")
 
-                    if niveau3:
-                        # C'est une classe → les sous-dossiers sont des apprentis
-                        logger.info(
-                            f"    Classe: {item2['name']} "
-                            f"({len(niveau3)} sous-dossiers)"
-                        )
+                query = (
+                    f"mimeType = 'application/vnd.google-apps.folder' "
+                    f"and {' and '.join(query_parts)} "
+                    f"and trashed = false"
+                )
 
-                        # Récupérer les fichiers de la classe (planning, etc.)
-                        fichiers_classe = self.lister_fichiers(
-                            item2["id"], drive_id
-                        )
-                        for f in fichiers_classe:
-                            f["classe_name"] = item2["name"]
-                            if "planning" in f["name"].lower():
-                                fichiers_planning.append(f)
-                                logger.info(
-                                    f"      Planning trouvé: {f['name']}"
-                                )
+                results = self._list_files(query, drive_id)
 
-                        # Ajouter les apprentis de cette classe
-                        for appr in niveau3:
-                            dossiers[appr["name"]] = {
-                                "id": appr["id"],
-                                "name": appr["name"],
-                                "parent_name": promo["name"],
-                                "classe_name": item2["name"],
-                                "webViewLink": appr.get("webViewLink", ""),
-                            }
-
-                        # Aller encore plus profond (niveau 4) au cas où
-                        for appr in niveau3:
-                            niveau4 = self.lister_sous_dossiers(
-                                appr["id"], drive_id
-                            )
-                            for sub in niveau4:
-                                # Sous-dossier d'un apprenti (ex: "admin", "émargements")
-                                # On ne les ajoute pas comme apprentis,
-                                # ils seront scannés récursivement
-                                pass
-                    else:
-                        # Pas de sous-dossiers → c'est peut-être un apprenti direct
-                        dossiers[item2["name"]] = {
-                            "id": item2["id"],
-                            "name": item2["name"],
-                            "parent_name": promo["name"],
+                if results:
+                    # Prendre le premier résultat pertinent
+                    for r in results:
+                        dossiers[r["name"]] = {
+                            "id": r["id"],
+                            "name": r["name"],
+                            "parent_name": "Drive SOURCE",
                             "classe_name": "",
-                            "webViewLink": item2.get("webViewLink", ""),
+                            "webViewLink": r.get("webViewLink", ""),
                         }
+                    logger.info(
+                        f"  {nom} -> trouvé {len(results)} dossier(s): "
+                        f"{results[0]['name']}"
+                    )
+
+            # Méthode 2 : Chercher aussi les plannings
+            logger.info("Drive SOURCE: recherche des plannings...")
+            query = (
+                f"name contains 'planning' "
+                f"and mimeType != 'application/vnd.google-apps.folder' "
+                f"and trashed = false"
+            )
+            planning_results = self._list_files(query, drive_id)
+            for f in planning_results:
+                fichiers_planning.append(f)
+
+            logger.info(
+                f"Trouvé {len(fichiers_planning)} fichiers planning"
+            )
 
         except Exception as e:
             logger.error(f"Erreur scan Drive SOURCE: {e}", exc_info=True)
 
         logger.info(
             f"Trouvé {len(dossiers)} dossiers d'apprenants dans le Drive SOURCE"
-        )
-        logger.info(
-            f"Trouvé {len(fichiers_planning)} fichiers planning de classes"
         )
         return dossiers, fichiers_planning
 
