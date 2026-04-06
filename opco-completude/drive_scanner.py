@@ -181,36 +181,92 @@ class DriveScanner:
         logger.warning(f"Dossier transversal '{nom_dossier}' non trouvé")
         return []
 
-    def scanner_drive_source(self) -> dict:
+    def scanner_drive_source(self) -> tuple:
         """
         Scanne le Drive SOURCE (PROMOTIONS PNBS) pour trouver les dossiers
-        d'apprenants.
+        d'apprenants. Cherche en profondeur : promotions → classes → apprentis.
+
+        Retourne (dossiers_apprenants, fichiers_planning_par_classe).
+        - dossiers_apprenants: dict {nom: {id, name, parent_name, classe_name}}
+        - fichiers_planning: list de fichiers planning trouvés au niveau classe
         """
         dossiers = {}
+        fichiers_planning = []
+
         try:
-            # Lister les dossiers de promotions
-            promotions = self.lister_sous_dossiers(
-                config.DRIVE_SOURCE_ID, config.DRIVE_SOURCE_ID
-            )
-            for promo in promotions:
-                # Chaque promotion contient des dossiers d'apprenants
-                apprenants = self.lister_sous_dossiers(
-                    promo["id"], config.DRIVE_SOURCE_ID
-                )
-                for appr in apprenants:
-                    dossiers[appr["name"]] = {
-                        "id": appr["id"],
-                        "name": appr["name"],
-                        "parent_name": promo["name"],
-                        "webViewLink": appr.get("webViewLink", ""),
-                    }
+            drive_id = config.DRIVE_SOURCE_ID
+            # Niveau 1 : dossiers racine du Drive (promotions)
+            racine = self.lister_sous_dossiers(drive_id, drive_id)
+            logger.info(f"Drive SOURCE: {len(racine)} dossiers racine")
+
+            for promo in racine:
+                logger.info(f"  Promotion: {promo['name']}")
+                # Niveau 2 : sous-dossiers (classes ou apprentis directs)
+                niveau2 = self.lister_sous_dossiers(promo["id"], drive_id)
+
+                for item2 in niveau2:
+                    # Vérifier si c'est une classe (contient des sous-dossiers)
+                    niveau3 = self.lister_sous_dossiers(item2["id"], drive_id)
+
+                    if niveau3:
+                        # C'est une classe → les sous-dossiers sont des apprentis
+                        logger.info(
+                            f"    Classe: {item2['name']} "
+                            f"({len(niveau3)} sous-dossiers)"
+                        )
+
+                        # Récupérer les fichiers de la classe (planning, etc.)
+                        fichiers_classe = self.lister_fichiers(
+                            item2["id"], drive_id
+                        )
+                        for f in fichiers_classe:
+                            f["classe_name"] = item2["name"]
+                            if "planning" in f["name"].lower():
+                                fichiers_planning.append(f)
+                                logger.info(
+                                    f"      Planning trouvé: {f['name']}"
+                                )
+
+                        # Ajouter les apprentis de cette classe
+                        for appr in niveau3:
+                            dossiers[appr["name"]] = {
+                                "id": appr["id"],
+                                "name": appr["name"],
+                                "parent_name": promo["name"],
+                                "classe_name": item2["name"],
+                                "webViewLink": appr.get("webViewLink", ""),
+                            }
+
+                        # Aller encore plus profond (niveau 4) au cas où
+                        for appr in niveau3:
+                            niveau4 = self.lister_sous_dossiers(
+                                appr["id"], drive_id
+                            )
+                            for sub in niveau4:
+                                # Sous-dossier d'un apprenti (ex: "admin", "émargements")
+                                # On ne les ajoute pas comme apprentis,
+                                # ils seront scannés récursivement
+                                pass
+                    else:
+                        # Pas de sous-dossiers → c'est peut-être un apprenti direct
+                        dossiers[item2["name"]] = {
+                            "id": item2["id"],
+                            "name": item2["name"],
+                            "parent_name": promo["name"],
+                            "classe_name": "",
+                            "webViewLink": item2.get("webViewLink", ""),
+                        }
+
         except Exception as e:
-            logger.error(f"Erreur scan Drive SOURCE: {e}")
+            logger.error(f"Erreur scan Drive SOURCE: {e}", exc_info=True)
 
         logger.info(
-            f"Trouvé {len(dossiers)} dossiers dans le Drive SOURCE"
+            f"Trouvé {len(dossiers)} dossiers d'apprenants dans le Drive SOURCE"
         )
-        return dossiers
+        logger.info(
+            f"Trouvé {len(fichiers_planning)} fichiers planning de classes"
+        )
+        return dossiers, fichiers_planning
 
     def clear_cache(self):
         """Vide le cache des requêtes."""

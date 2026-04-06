@@ -82,11 +82,12 @@ def effectuer_scan():
             dossiers_cible = scanner.trouver_dossiers_apprenants(config.DRIVE_CIBLE_ID)
         scan_state["progression"] = 25
 
-        # 4. Scanner le Drive SOURCE
+        # 4. Scanner le Drive SOURCE (promotions → classes → apprentis)
         dossiers_source = {}
+        fichiers_planning_classes = []
         if drive_ok:
             logger.info("Scan du Drive SOURCE (PROMOTIONS PNBS)...")
-            dossiers_source = scanner.scanner_drive_source()
+            dossiers_source, fichiers_planning_classes = scanner.scanner_drive_source()
         scan_state["progression"] = 35
 
         scan_state["progression"] = 40
@@ -156,6 +157,13 @@ def effectuer_scan():
                 for f in fichiers_source:
                     if f["name"] not in noms_existants:
                         fichiers_dossier.append(f)
+                # Ajouter les plannings de la classe de cet apprenti
+                classe_name = match_source.get("classe_name", "")
+                if classe_name:
+                    for pf in fichiers_planning_classes:
+                        if pf.get("classe_name") == classe_name:
+                            if pf["name"] not in {f["name"] for f in fichiers_dossier}:
+                                fichiers_dossier.append(pf)
 
             if match_local:
                 if not match_cible and not match_source:
