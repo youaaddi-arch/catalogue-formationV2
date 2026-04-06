@@ -137,33 +137,25 @@ def effectuer_scan():
             # Construire la liste de fichiers en combinant toutes les sources
             fichiers_dossier = []
 
+            # Prendre le meilleur match comme dossier principal
             if match_cible:
                 apprenti.dossier_id = match_cible["id"]
                 apprenti.dossier_nom = match_cible["nom_match"]
                 apprenti.dossier_source = "cible"
-                fichiers_dossier = scanner.lister_tout_contenu_recursif(
-                    match_cible["id"]
-                )
+            elif match_source:
+                apprenti.dossier_id = match_source["id"]
+                apprenti.dossier_nom = match_source["nom_match"]
+                apprenti.dossier_source = "source"
 
-            if match_source:
-                if not match_cible:
-                    apprenti.dossier_id = match_source["id"]
-                    apprenti.dossier_nom = match_source["nom_match"]
-                    apprenti.dossier_source = "source"
-                fichiers_source = scanner.lister_tout_contenu_recursif(
-                    match_source["id"]
-                )
-                noms_existants = {f["name"] for f in fichiers_dossier}
-                for f in fichiers_source:
-                    if f["name"] not in noms_existants:
-                        fichiers_dossier.append(f)
-                # Ajouter les plannings de la classe de cet apprenti
-                classe_name = match_source.get("classe_name", "")
-                if classe_name:
-                    for pf in fichiers_planning_classes:
-                        if pf.get("classe_name") == classe_name:
-                            if pf["name"] not in {f["name"] for f in fichiers_dossier}:
-                                fichiers_dossier.append(pf)
+            # Chercher les fichiers par NOM dans tout le Drive
+            # (car le listing par parent ne fonctionne pas)
+            if drive_ok:
+                fichiers_drive = scanner.chercher_fichiers_par_nom(nom_apprenti)
+                fichiers_dossier.extend(fichiers_drive)
+                if fichiers_drive:
+                    logger.info(
+                        f"  -> {len(fichiers_drive)} fichiers Drive"
+                    )
 
             if match_local:
                 if not match_cible and not match_source:

@@ -254,6 +254,30 @@ class DriveScanner:
         )
         return dossiers, fichiers_planning
 
+    def chercher_fichiers_par_nom(self, nom_apprenti: str) -> list:
+        """
+        Cherche tous les fichiers (non-dossiers) dont le nom contient
+        des mots du nom de l'apprenti, dans tous les Drives.
+        """
+        mots = [m for m in nom_apprenti.split() if len(m) > 1]
+        if not mots:
+            return []
+
+        # Chercher avec les 2 premiers mots significatifs
+        mots_recherche = mots[:2]
+        query_parts = []
+        for mot in mots_recherche:
+            mot_escaped = self._escape_query(mot)
+            query_parts.append(f"name contains '{mot_escaped}'")
+
+        query = (
+            f"mimeType != 'application/vnd.google-apps.folder' "
+            f"and {' and '.join(query_parts)} "
+            f"and trashed = false"
+        )
+
+        return self._list_files(query)
+
     def clear_cache(self):
         """Vide le cache des requêtes."""
         self._cache = {}
