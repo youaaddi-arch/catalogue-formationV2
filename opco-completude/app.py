@@ -11,6 +11,7 @@ from flask import Flask, jsonify, render_template, request, send_file
 
 import config
 from drive_scanner import DriveScanner
+from local_scanner import LocalScanner
 from excel_reader import lire_excel
 from matcher import (
     associer_donnees_excel,
@@ -53,13 +54,12 @@ def effectuer_scan():
         # 1. Connexion au Drive
         logger.info("Connexion au Google Drive...")
         scanner = DriveScanner()
-        if not scanner.connect():
-            scan_state["erreur"] = (
+        drive_ok = scanner.connect()
+        if not drive_ok:
+            logger.warning(
                 "Impossible de se connecter au Google Drive. "
-                "Vérifiez le fichier credentials.json."
+                "Le scan continuera avec les fichiers locaux uniquement."
             )
-            scan_state["en_cours"] = False
-            return
 
         scan_state["progression"] = 5
 
@@ -69,23 +69,40 @@ def effectuer_scan():
         scan_state["progression"] = 10
 
         # 3. Scanner les dossiers d'apprenants dans le Drive CIBLE
-        logger.info("Scan des dossiers d'apprenants (Drive CIBLE)...")
-        dossiers_cible = scanner.trouver_dossiers_apprenants(config.DRIVE_CIBLE_ID)
-        scan_state["progression"] = 25
+        dossiers_cible = {}
+        if drive_ok:
+            logger.info("Scan des dossiers d'apprenants (Drive CIBLE)...")
+            dossiers_cible = scanner.trouver_dossiers_apprenants(config.DRIVE_CIBLE_ID)
+        scan_state["progression"] = 20
 
         # 4. Scanner le Drive SOURCE
-        logger.info("Scan du Drive SOURCE (PROMOTIONS PNBS)...")
-        dossiers_source = scanner.scanner_drive_source()
+        dossiers_source = {}
+        if drive_ok:
+            logger.info("Scan du Drive SOURCE (PROMOTIONS PNBS)...")
+            dossiers_source = scanner.scanner_drive_source()
+        scan_state["progression"] = 30
+
+        # 4b. Scanner le dossier LOCAL
+        logger.info("Scan du dossier local...")
+        local_scanner = LocalScanner()
+        dossiers_local = local_scanner.scanner_dossiers_apprenants()
         scan_state["progression"] = 40
 
         # 5. Scanner les dossiers transversaux
-        logger.info("Scan des dossiers transversaux...")
-        fichiers_factures = scanner.trouver_fichiers_transversaux(
-            config.DRIVE_CIBLE_ID, config.DOSSIER_FACTURES
-        )
-        fichiers_apec = scanner.trouver_fichiers_transversaux(
-            config.DRIVE_CIBLE_ID, config.DOSSIER_APEC
-        )
+        fichiers_factures = []
+        fichiers_apec = []
+        if drive_ok:
+            logger.info("Scan des dossiers transversaux...")
+            fichiers_factures = scanner.trouver_fichiers_transversaux(
+                config.DRIVE_CIBLE_ID, config.DOSSIER_FACTURES
+            )
+            fichiers_apec = scanner.trouver_fichiers_transversaux(
+                config.DRIVE_CIBLE_ID, config.DOSSIER_APEC
+            )
+        # Ajouter les fichiers locaux à la racine comme factures/apec potentielles
+        fichiers_local_racine = local_scanner.lister_tous_fichiers_racine()
+        fichiers_factures.extend(fichiers_local_racine)
+        fichiers_apec.extend(fichiers_local_racine)
         scan_state["progression"] = 50
 
         # 6. Pour chaque apprenti, chercher son dossier et vérifier les pièces
@@ -100,12 +117,14 @@ def effectuer_scan():
                 nom_normalise=normaliser_nom(nom_apprenti),
             )
 
-            # Chercher le dossier dans le Drive CIBLE d'abord
+            # Chercher le dossier dans Drive CIBLE, Drive SOURCE et LOCAL
             match_cible = trouver_dossier_apprenti(nom_apprenti, dossiers_cible)
             match_source = trouver_dossier_apprenti(nom_apprenti, dossiers_source)
+            match_local = trouver_dossier_apprenti(nom_apprenti, dossiers_local)
 
-            # Prioriser le Drive CIBLE
+            # Construire la liste de fichiers en combinant toutes les sources
             fichiers_dossier = []
+
             if match_cible:
                 apprenti.dossier_id = match_cible["id"]
                 apprenti.dossier_nom = match_cible["nom_match"]
@@ -113,23 +132,31 @@ def effectuer_scan():
                 fichiers_dossier = scanner.lister_tout_contenu_recursif(
                     match_cible["id"], config.DRIVE_CIBLE_ID
                 )
-            elif match_source:
-                apprenti.dossier_id = match_source["id"]
-                apprenti.dossier_nom = match_source["nom_match"]
-                apprenti.dossier_source = "source"
-                fichiers_dossier = scanner.lister_tout_contenu_recursif(
-                    match_source["id"], config.DRIVE_SOURCE_ID
-                )
 
-            # Si trouvé dans les deux, fusionner les fichiers
-            if match_cible and match_source:
+            if match_source:
+                if not match_cible:
+                    apprenti.dossier_id = match_source["id"]
+                    apprenti.dossier_nom = match_source["nom_match"]
+                    apprenti.dossier_source = "source"
                 fichiers_source = scanner.lister_tout_contenu_recursif(
                     match_source["id"], config.DRIVE_SOURCE_ID
                 )
-                # Ajouter les fichiers du source qui ne sont pas déjà dans cible
-                noms_cible = {f["name"] for f in fichiers_dossier}
+                noms_existants = {f["name"] for f in fichiers_dossier}
                 for f in fichiers_source:
-                    if f["name"] not in noms_cible:
+                    if f["name"] not in noms_existants:
+                        fichiers_dossier.append(f)
+
+            if match_local:
+                if not match_cible and not match_source:
+                    apprenti.dossier_id = match_local["id"]
+                    apprenti.dossier_nom = match_local["nom_match"]
+                    apprenti.dossier_source = "local"
+                fichiers_local = local_scanner.lister_fichiers_recursif(
+                    match_local["path"]
+                )
+                noms_existants = {f["name"] for f in fichiers_dossier}
+                for f in fichiers_local:
+                    if f["name"] not in noms_existants:
                         fichiers_dossier.append(f)
 
             # Associer les données Excel

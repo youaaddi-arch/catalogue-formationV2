@@ -143,6 +143,12 @@ PIECES_TRANSVERSALES = [
 # Toutes les pièces combinées
 TOUTES_PIECES = PIECES_OBLIGATOIRES + PIECES_CONDITIONNELLES + PIECES_TRANSVERSALES
 
+# Dossier local contenant les documents déjà envoyés
+LOCAL_DOSSIER_PATH = os.environ.get(
+    "LOCAL_DOSSIER_PATH",
+    os.path.expanduser("~/Downloads/DOSSIER OPCO DEJA ENVOYE")
+)
+
 # Seuil de fuzzy matching (0-100)
 FUZZY_THRESHOLD = 70
 
