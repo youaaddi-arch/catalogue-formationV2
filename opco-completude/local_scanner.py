@@ -17,8 +17,8 @@ DOSSIERS_APPRENANTS_NOMS = [
     "partie 4 dossiers apprenants",
 ]
 
-DOSSIER_FACTURES_NOMS = ["factures bloquées", "factures bloquees"]
-DOSSIER_APEC_NOMS = ["accord pec des factures bloquées", "accord pec des factures bloquees"]
+DOSSIER_FACTURES_NOMS = ["factures bloquées", "factures bloquees", "factures bloqu"]
+DOSSIER_APEC_NOMS = ["accord pec des factures bloquées", "accord pec des factures bloquees", "accord pec"]
 
 
 class LocalScanner:
@@ -79,8 +79,19 @@ class LocalScanner:
 
         # Chercher dans les dossiers d'apprenants (Partie 1, 2, 3, 4)
         for item in self.racine.iterdir():
-            if item.is_dir() and item.name.lower() in DOSSIERS_APPRENANTS_NOMS:
+            if not item.is_dir():
+                continue
+            item_lower = item.name.lower().strip()
+            # Matcher les dossiers d'apprenants par mots-clés
+            is_dossier_apprenant = (
+                item_lower in DOSSIERS_APPRENANTS_NOMS
+                or "dossiers apprenants" in item_lower
+                or "dossier apprenant" in item_lower
+                or (item_lower.startswith("partie") and "apprenants" in item_lower)
+            )
+            if is_dossier_apprenant:
                 logger.info(f"  Scan de '{item.name}'...")
+                count = 0
                 for apprenti_dir in item.iterdir():
                     if apprenti_dir.is_dir():
                         dossiers[apprenti_dir.name] = {
@@ -91,10 +102,8 @@ class LocalScanner:
                             "webViewLink": "",
                             "source": "local",
                         }
-                logger.info(
-                    f"  -> {sum(1 for d in item.iterdir() if d.is_dir())} "
-                    f"dossiers d'apprenants"
-                )
+                        count += 1
+                logger.info(f"  -> {count} dossiers d'apprenants")
 
         logger.info(f"Total: {len(dossiers)} dossiers d'apprenants locaux")
         return dossiers
@@ -134,7 +143,7 @@ class LocalScanner:
             return fichiers
 
         for item in self.racine.iterdir():
-            if item.is_dir() and item.name.lower() in noms_dossier:
+            if item.is_dir() and any(n in item.name.lower() for n in noms_dossier):
                 for f in item.rglob("*"):
                     if f.is_file() and not f.name.startswith("."):
                         fichiers.append({
