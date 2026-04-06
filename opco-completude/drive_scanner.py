@@ -53,13 +53,8 @@ class DriveScanner:
                     "fields": "nextPageToken, files(id, name, mimeType, parents, webViewLink)",
                     "supportsAllDrives": True,
                     "includeItemsFromAllDrives": True,
+                    "corpora": "allDrives",
                 }
-                if drive_id:
-                    # Essayer comme Drive partagé d'abord, sinon allDrives
-                    params["driveId"] = drive_id
-                    params["corpora"] = "drive"
-                else:
-                    params["corpora"] = "allDrives"
                 if page_token:
                     params["pageToken"] = page_token
 
