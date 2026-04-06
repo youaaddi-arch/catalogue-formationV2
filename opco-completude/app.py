@@ -157,6 +157,12 @@ def effectuer_scan():
                         f"  -> {len(fichiers_drive)} fichiers Drive"
                     )
 
+            # Ajouter les plannings de classes (ils ne contiennent pas
+            # le nom de l'apprenti, donc la recherche par nom ne les trouve pas)
+            for pf in fichiers_planning_classes:
+                if pf["name"] not in {f["name"] for f in fichiers_dossier}:
+                    fichiers_dossier.append(pf)
+
             if match_local:
                 if not match_cible and not match_source:
                     apprenti.dossier_id = match_local["id"]
