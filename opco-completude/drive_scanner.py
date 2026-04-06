@@ -55,8 +55,11 @@ class DriveScanner:
                     "includeItemsFromAllDrives": True,
                 }
                 if drive_id:
+                    # Essayer comme Drive partagé d'abord, sinon allDrives
                     params["driveId"] = drive_id
                     params["corpora"] = "drive"
+                else:
+                    params["corpora"] = "allDrives"
                 if page_token:
                     params["pageToken"] = page_token
 
@@ -216,10 +219,10 @@ class DriveScanner:
                     f"and trashed = false"
                 )
 
-                results = self._list_files(query, drive_id)
+                # Chercher dans TOUS les drives (pas un drive spécifique)
+                results = self._list_files(query)
 
                 if results:
-                    # Prendre le premier résultat pertinent
                     for r in results:
                         dossiers[r["name"]] = {
                             "id": r["id"],
@@ -240,7 +243,7 @@ class DriveScanner:
                 f"and mimeType != 'application/vnd.google-apps.folder' "
                 f"and trashed = false"
             )
-            planning_results = self._list_files(query, drive_id)
+            planning_results = self._list_files(query)
             for f in planning_results:
                 fichiers_planning.append(f)
 
