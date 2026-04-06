@@ -379,4 +379,4 @@ if __name__ == "__main__":
     logger.info("Démarrage de l'application OPCO EP Complétude...")
     logger.info(f"Credentials: {config.CREDENTIALS_PATH}")
     logger.info(f"Excel: {config.EXCEL_PATH}")
-    app.run(debug=config.DEBUG, host="0.0.0.0", port=5000)
+    app.run(debug=config.DEBUG, host="0.0.0.0", port=8080)

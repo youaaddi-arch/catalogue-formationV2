@@ -6,7 +6,8 @@ echo "==================================="
 echo ""
 echo "Ne fermez pas cette fenetre !"
 echo ""
-python3 app.py
+export FLASK_APP=app.py
+python3 -m flask run --host=0.0.0.0 --port=8080
 echo ""
 echo "L'application s'est arretee. Appuyez sur une touche pour fermer."
 read -n 1
