@@ -142,7 +142,7 @@ def effectuer_scan():
                 apprenti.dossier_nom = match_cible["nom_match"]
                 apprenti.dossier_source = "cible"
                 fichiers_dossier = scanner.lister_tout_contenu_recursif(
-                    match_cible["id"], config.DRIVE_CIBLE_ID
+                    match_cible["id"]
                 )
 
             if match_source:
@@ -151,7 +151,7 @@ def effectuer_scan():
                     apprenti.dossier_nom = match_source["nom_match"]
                     apprenti.dossier_source = "source"
                 fichiers_source = scanner.lister_tout_contenu_recursif(
-                    match_source["id"], config.DRIVE_SOURCE_ID
+                    match_source["id"]
                 )
                 noms_existants = {f["name"] for f in fichiers_dossier}
                 for f in fichiers_source:
