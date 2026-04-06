@@ -30,6 +30,23 @@
                 </p>
                 {% endif %}
 
+                {% if apprenti.classe %}
+                <p class="mb-1">
+                    <i class="bi bi-mortarboard"></i> Classe : <strong>{{ apprenti.classe }}</strong>
+                </p>
+                {% endif %}
+                {% if apprenti.jour_cours %}
+                <p class="mb-1">
+                    <i class="bi bi-calendar-week"></i> Jour de cours : <span class="badge bg-primary">{{ apprenti.jour_cours }}</span>
+                </p>
+                {% endif %}
+                {% if apprenti.date_debut_formation or apprenti.date_fin_formation %}
+                <p class="mb-1">
+                    <i class="bi bi-calendar-range"></i> Formation :
+                    {{ apprenti.date_debut_formation or '?' }} → {{ apprenti.date_fin_formation or '?' }}
+                </p>
+                {% endif %}
+
                 {% if apprenti.donnees_excel %}
                 <p class="mb-1">
                     <i class="bi bi-hash"></i> Dossier n° : {{ apprenti.donnees_excel.numero_dossier or 'N/A' }}

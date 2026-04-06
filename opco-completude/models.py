@@ -41,6 +41,10 @@ class Apprenti:
     dossier_id: Optional[str] = None
     dossier_nom: Optional[str] = None
     dossier_source: Optional[str] = None  # "cible" ou "source"
+    classe: Optional[str] = None
+    jour_cours: Optional[str] = None  # lundi, mardi, etc.
+    date_debut_formation: Optional[str] = None
+    date_fin_formation: Optional[str] = None
     pieces: list = field(default_factory=list)  # Liste de PieceJustificative
     donnees_excel: Optional[DonnéesExcel] = None
     score_completude: float = 0.0
@@ -78,6 +82,10 @@ class Apprenti:
         """Convertit en dictionnaire pour l'export."""
         result = {
             "Nom": self.nom,
+            "Classe": self.classe or "",
+            "Jour de cours": self.jour_cours or "",
+            "Début formation": self.date_debut_formation or "",
+            "Fin formation": self.date_fin_formation or "",
             "Dossier Drive": self.dossier_nom or "Non trouvé",
             "Score": f"{self.score_completude}%",
             "Pièces trouvées": f"{self.nb_pieces_trouvees}/{self.nb_pieces_attendues}",

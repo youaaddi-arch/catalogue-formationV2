@@ -278,6 +278,31 @@ class DriveScanner:
 
         return self._list_files(query)
 
+    def chercher_fichiers_globaux(self, mot_cle: str) -> list:
+        """
+        Cherche tous les fichiers contenant un mot-clé dans tout le Drive.
+        Utilisé pour les ECF, émargements TCD, plannings, etc.
+        """
+        mot_escaped = self._escape_query(mot_cle)
+        query = (
+            f"name contains '{mot_escaped}' "
+            f"and mimeType != 'application/vnd.google-apps.folder' "
+            f"and trashed = false"
+        )
+        return self._list_files(query)
+
+    def chercher_dossiers_globaux(self, mot_cle: str) -> list:
+        """
+        Cherche tous les dossiers contenant un mot-clé dans tout le Drive.
+        """
+        mot_escaped = self._escape_query(mot_cle)
+        query = (
+            f"name contains '{mot_escaped}' "
+            f"and mimeType = 'application/vnd.google-apps.folder' "
+            f"and trashed = false"
+        )
+        return self._list_files(query)
+
     def clear_cache(self):
         """Vide le cache des requêtes."""
         self._cache = {}

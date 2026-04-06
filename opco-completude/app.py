@@ -90,6 +90,30 @@ def effectuer_scan():
             dossiers_source, fichiers_planning_classes = scanner.scanner_drive_source()
         scan_state["progression"] = 35
 
+        # 4c. Chercher les fichiers globaux (ECF, émargements TCD, plannings)
+        fichiers_ecf_globaux = []
+        fichiers_emargement_globaux = []
+        if drive_ok:
+            logger.info("Recherche des ECF (examens)...")
+            fichiers_ecf_globaux = scanner.chercher_fichiers_globaux("ecf")
+            fichiers_ecf_globaux.extend(scanner.chercher_fichiers_globaux("examen"))
+            logger.info(f"  -> {len(fichiers_ecf_globaux)} fichiers ECF/examen")
+
+            logger.info("Recherche des émargements TCD...")
+            fichiers_emargement_globaux = scanner.chercher_fichiers_globaux("emargement")
+            fichiers_emargement_globaux.extend(
+                scanner.chercher_fichiers_globaux("émargement")
+            )
+            fichiers_emargement_globaux.extend(
+                scanner.chercher_fichiers_globaux("presence")
+            )
+            fichiers_emargement_globaux.extend(
+                scanner.chercher_fichiers_globaux("TCD")
+            )
+            logger.info(
+                f"  -> {len(fichiers_emargement_globaux)} fichiers émargement"
+            )
+
         scan_state["progression"] = 40
 
         # 5. Scanner les dossiers transversaux
@@ -146,6 +170,7 @@ def effectuer_scan():
                 apprenti.dossier_id = match_source["id"]
                 apprenti.dossier_nom = match_source["nom_match"]
                 apprenti.dossier_source = "source"
+                apprenti.classe = match_source.get("classe_name", "")
 
             # Chercher les fichiers par NOM dans tout le Drive
             # (car le listing par parent ne fonctionne pas)
@@ -157,11 +182,25 @@ def effectuer_scan():
                         f"  -> {len(fichiers_drive)} fichiers Drive"
                     )
 
-            # Ajouter les plannings de classes (ils ne contiennent pas
-            # le nom de l'apprenti, donc la recherche par nom ne les trouve pas)
+            # Ajouter les plannings de classes
             for pf in fichiers_planning_classes:
                 if pf["name"] not in {f["name"] for f in fichiers_dossier}:
                     fichiers_dossier.append(pf)
+
+            # Ajouter les ECF globaux qui contiennent le nom de l'apprenti
+            from matcher import chercher_nom_dans_fichier
+            noms_existants = {f["name"] for f in fichiers_dossier}
+            for ef in fichiers_ecf_globaux:
+                if ef["name"] not in noms_existants:
+                    if chercher_nom_dans_fichier(nom_apprenti, ef["name"]):
+                        fichiers_dossier.append(ef)
+
+            # Ajouter les émargements globaux qui contiennent le nom
+            noms_existants = {f["name"] for f in fichiers_dossier}
+            for em in fichiers_emargement_globaux:
+                if em["name"] not in noms_existants:
+                    if chercher_nom_dans_fichier(nom_apprenti, em["name"]):
+                        fichiers_dossier.append(em)
 
             if match_local:
                 if not match_cible and not match_source:

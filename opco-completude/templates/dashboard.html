@@ -168,6 +168,8 @@
             <tr>
                 <th>#</th>
                 <th>Apprenti</th>
+                <th>Classe</th>
+                <th>Jour</th>
                 <th>N° Dossier</th>
                 <th>Statut dossier</th>
                 <th>CERFA</th>
@@ -204,6 +206,8 @@
                     </span>
                     {% endif %}
                 </td>
+                <td><small>{{ apprenti.classe or '-' }}</small></td>
+                <td>{{ apprenti.jour_cours or '-' }}</td>
                 <td>{{ apprenti.donnees_excel.numero_dossier if apprenti.donnees_excel and apprenti.donnees_excel.numero_dossier else '-' }}</td>
                 <td>
                     {% if apprenti.donnees_excel and apprenti.donnees_excel.statut_dossier %}
