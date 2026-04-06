@@ -149,6 +149,9 @@ LOCAL_DOSSIER_PATH = os.environ.get(
     os.path.expanduser("~/Downloads/DOSSIER OPCO DEJA ENVOYE")
 )
 
+# Sous-dossier principal dans le dossier local
+LOCAL_SOUS_DOSSIER = "PNBS x Opco EP octobre 2025"
+
 # Seuil de fuzzy matching (0-100)
 FUZZY_THRESHOLD = 70
 

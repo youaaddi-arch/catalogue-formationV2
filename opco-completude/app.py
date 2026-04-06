@@ -63,43 +63,53 @@ def effectuer_scan():
 
         scan_state["progression"] = 5
 
-        # 2. Lire le fichier Excel
-        logger.info("Lecture du fichier Excel CONSTATS EP...")
-        donnees_excel = lire_excel()
+        # 2. Scanner le dossier LOCAL d'abord
+        logger.info("Scan du dossier local...")
+        local_scanner = LocalScanner()
+        dossiers_local = local_scanner.scanner_dossiers_apprenants()
         scan_state["progression"] = 10
+
+        # 2b. Lire le fichier Excel (chercher d'abord en local)
+        logger.info("Lecture du fichier Excel CONSTATS EP...")
+        excel_local = local_scanner.trouver_excel_constats()
+        donnees_excel = lire_excel(excel_local or config.EXCEL_PATH)
+        scan_state["progression"] = 15
 
         # 3. Scanner les dossiers d'apprenants dans le Drive CIBLE
         dossiers_cible = {}
         if drive_ok:
             logger.info("Scan des dossiers d'apprenants (Drive CIBLE)...")
             dossiers_cible = scanner.trouver_dossiers_apprenants(config.DRIVE_CIBLE_ID)
-        scan_state["progression"] = 20
+        scan_state["progression"] = 25
 
         # 4. Scanner le Drive SOURCE
         dossiers_source = {}
         if drive_ok:
             logger.info("Scan du Drive SOURCE (PROMOTIONS PNBS)...")
             dossiers_source = scanner.scanner_drive_source()
-        scan_state["progression"] = 30
+        scan_state["progression"] = 35
 
-        # 4b. Scanner le dossier LOCAL
-        logger.info("Scan du dossier local...")
-        local_scanner = LocalScanner()
-        dossiers_local = local_scanner.scanner_dossiers_apprenants()
         scan_state["progression"] = 40
 
         # 5. Scanner les dossiers transversaux
         fichiers_factures = []
         fichiers_apec = []
         if drive_ok:
-            logger.info("Scan des dossiers transversaux...")
+            logger.info("Scan des dossiers transversaux (Drive)...")
             fichiers_factures = scanner.trouver_fichiers_transversaux(
                 config.DRIVE_CIBLE_ID, config.DOSSIER_FACTURES
             )
             fichiers_apec = scanner.trouver_fichiers_transversaux(
                 config.DRIVE_CIBLE_ID, config.DOSSIER_APEC
             )
-        # Ajouter les fichiers locaux à la racine comme factures/apec potentielles
+        # Ajouter les fichiers transversaux locaux
+        from local_scanner import DOSSIER_FACTURES_NOMS, DOSSIER_APEC_NOMS
+        fichiers_factures.extend(
+            local_scanner.trouver_fichiers_transversaux(DOSSIER_FACTURES_NOMS)
+        )
+        fichiers_apec.extend(
+            local_scanner.trouver_fichiers_transversaux(DOSSIER_APEC_NOMS)
+        )
         fichiers_local_racine = local_scanner.lister_tous_fichiers_racine()
         fichiers_factures.extend(fichiers_local_racine)
         fichiers_apec.extend(fichiers_local_racine)

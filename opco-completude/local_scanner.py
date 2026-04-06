@@ -1,13 +1,24 @@
 """Module de scan des dossiers locaux pour l'application OPCO EP."""
 
+import glob
 import logging
 import os
-import re
 from pathlib import Path
 
 import config
 
 logger = logging.getLogger(__name__)
+
+# Noms des dossiers contenant les apprentis
+DOSSIERS_APPRENANTS_NOMS = [
+    "dossiers apprenants",
+    "partie 2 dossiers apprenants",
+    "partie 3 dossiers apprenants",
+    "partie 4 dossiers apprenants",
+]
+
+DOSSIER_FACTURES_NOMS = ["factures bloquées", "factures bloquees"]
+DOSSIER_APEC_NOMS = ["accord pec des factures bloquées", "accord pec des factures bloquees"]
 
 
 class LocalScanner:
@@ -17,11 +28,9 @@ class LocalScanner:
         self.base_path = base_path or config.LOCAL_DOSSIER_PATH
         # Essayer de trouver le dossier par glob si le chemin exact ne marche pas
         if not Path(self.base_path).exists():
-            import glob
             patterns = [
                 os.path.expanduser("~/Downloads/DOSSIER*OPCO*ENVOYE*"),
                 os.path.expanduser("~/Downloads/DOSSIER*OPCO*"),
-                os.path.expanduser("~/Downloads/dossier*opco*"),
             ]
             for pattern in patterns:
                 matches = glob.glob(pattern)
@@ -30,58 +39,64 @@ class LocalScanner:
                     logger.info(f"Dossier local trouvé par glob: {self.base_path}")
                     break
 
+        # Chercher le sous-dossier principal (ex: "PNBS x Opco EP octobre 2025")
+        self.racine = self._trouver_racine()
+        logger.info(f"Racine locale: {self.racine}")
+
+    def _trouver_racine(self) -> Path:
+        """Trouve le dossier racine contenant les dossiers d'apprenants."""
+        base = Path(self.base_path)
+        if not base.exists():
+            return base
+
+        # Vérifier si la base contient directement des dossiers d'apprenants
+        for item in base.iterdir():
+            if item.is_dir() and item.name.lower() in DOSSIERS_APPRENANTS_NOMS:
+                return base
+
+        # Sinon chercher dans les sous-dossiers (ex: "PNBS x Opco EP octobre 2025")
+        for item in base.iterdir():
+            if item.is_dir():
+                for sub in item.iterdir():
+                    if sub.is_dir() and sub.name.lower() in DOSSIERS_APPRENANTS_NOMS:
+                        return item
+
+        # Fallback: retourner la base
+        return base
+
     def scanner_dossiers_apprenants(self) -> dict:
         """
         Scanne le dossier local pour trouver les sous-dossiers d'apprenants.
-        Retourne un dict {nom_dossier: {id, name, parent_name, files}}.
+        Retourne un dict {nom_dossier: {id, name, parent_name, path}}.
         """
         dossiers = {}
-        base = Path(self.base_path)
 
-        if not base.exists():
-            logger.warning(f"Dossier local non trouvé: {self.base_path}")
+        if not self.racine.exists():
+            logger.warning(f"Dossier local non trouvé: {self.racine}")
             return dossiers
 
-        logger.info(f"Scan du dossier local: {self.base_path}")
+        logger.info(f"Scan du dossier local: {self.racine}")
 
-        # Scanner les sous-dossiers (chaque sous-dossier = un apprenti ou un lot)
-        for item in base.iterdir():
-            if item.is_dir():
-                # Vérifier si c'est un dossier d'apprenti directement
-                # ou un dossier contenant des sous-dossiers d'apprentis
-                sous_dossiers = [d for d in item.iterdir() if d.is_dir()]
-                fichiers = [f for f in item.iterdir() if f.is_file()]
-
-                if sous_dossiers and len(sous_dossiers) > len(fichiers):
-                    # C'est probablement un dossier parent (ex: "PARTIE 1")
-                    for sd in sous_dossiers:
-                        dossiers[sd.name] = {
-                            "id": str(sd),
-                            "name": sd.name,
+        # Chercher dans les dossiers d'apprenants (Partie 1, 2, 3, 4)
+        for item in self.racine.iterdir():
+            if item.is_dir() and item.name.lower() in DOSSIERS_APPRENANTS_NOMS:
+                logger.info(f"  Scan de '{item.name}'...")
+                for apprenti_dir in item.iterdir():
+                    if apprenti_dir.is_dir():
+                        dossiers[apprenti_dir.name] = {
+                            "id": str(apprenti_dir),
+                            "name": apprenti_dir.name,
                             "parent_name": item.name,
-                            "path": str(sd),
+                            "path": str(apprenti_dir),
                             "webViewLink": "",
                             "source": "local",
                         }
-                    logger.info(
-                        f"  Dossier parent '{item.name}': "
-                        f"{len(sous_dossiers)} sous-dossiers"
-                    )
-                else:
-                    # C'est un dossier d'apprenti
-                    dossiers[item.name] = {
-                        "id": str(item),
-                        "name": item.name,
-                        "parent_name": base.name,
-                        "path": str(item),
-                        "webViewLink": "",
-                        "source": "local",
-                    }
-            elif item.is_file():
-                # Fichier à la racine — on le met dans un dossier "racine"
-                pass
+                logger.info(
+                    f"  -> {sum(1 for d in item.iterdir() if d.is_dir())} "
+                    f"dossiers d'apprenants"
+                )
 
-        logger.info(f"Trouvé {len(dossiers)} dossiers locaux")
+        logger.info(f"Total: {len(dossiers)} dossiers d'apprenants locaux")
         return dossiers
 
     def lister_fichiers_recursif(self, dossier_path: str) -> list:
@@ -108,29 +123,50 @@ class LocalScanner:
 
         return fichiers
 
-    def lister_tous_fichiers_racine(self) -> list:
+    def trouver_fichiers_transversaux(self, noms_dossier: list) -> list:
         """
-        Liste tous les fichiers à la racine du dossier
-        (fichiers non classés dans un sous-dossier).
+        Trouve tous les fichiers dans un dossier transversal local
+        (Factures bloquées, Accord PEC, etc.).
         """
         fichiers = []
-        base = Path(self.base_path)
 
-        if not base.exists():
+        if not self.racine.exists():
             return fichiers
 
-        for item in base.iterdir():
-            if item.is_file() and not item.name.startswith("."):
-                fichiers.append({
-                    "id": str(item),
-                    "name": item.name,
-                    "mimeType": _deviner_mime_type(item.name),
-                    "webViewLink": "",
-                    "path": str(item),
-                    "source": "local",
-                })
+        for item in self.racine.iterdir():
+            if item.is_dir() and item.name.lower() in noms_dossier:
+                for f in item.rglob("*"):
+                    if f.is_file() and not f.name.startswith("."):
+                        fichiers.append({
+                            "id": str(f),
+                            "name": f.name,
+                            "mimeType": _deviner_mime_type(f.name),
+                            "webViewLink": "",
+                            "path": str(f),
+                            "source": "local",
+                        })
+                logger.info(
+                    f"  Dossier transversal '{item.name}': {len(fichiers)} fichiers"
+                )
 
         return fichiers
+
+    def trouver_excel_constats(self) -> str | None:
+        """Cherche le fichier Excel CONSTATS EP dans le dossier local."""
+        if not self.racine.exists():
+            return None
+
+        for item in self.racine.iterdir():
+            if item.is_file() and "controle" in item.name.lower() and item.suffix.lower() in (".xlsx", ".xls"):
+                logger.info(f"  Fichier Excel trouvé: {item}")
+                return str(item)
+
+        for item in self.racine.iterdir():
+            if item.is_file() and "constats" in item.name.lower() and item.suffix.lower() in (".xlsx", ".xls"):
+                logger.info(f"  Fichier Excel trouvé: {item}")
+                return str(item)
+
+        return None
 
 
 def _deviner_mime_type(nom_fichier: str) -> str:
