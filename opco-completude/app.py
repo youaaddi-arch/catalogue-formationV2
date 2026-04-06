@@ -172,26 +172,44 @@ def effectuer_scan():
                 apprenti.dossier_source = "source"
 
             # Récupérer le nom de la classe (dossier parent de l'apprenti)
-            if drive_ok and apprenti.dossier_id:
+            if drive_ok and match_source:
                 try:
-                    # Récupérer le dossier de l'apprenti pour avoir ses parents
-                    folder = scanner.service.files().get(
-                        fileId=apprenti.dossier_id,
-                        fields="parents",
-                        supportsAllDrives=True,
-                    ).execute()
-                    parent_ids = folder.get("parents", [])
-                    if parent_ids:
-                        # Le parent direct = la classe (ex: NTC21)
-                        parent_info = scanner.service.files().get(
-                            fileId=parent_ids[0],
-                            fields="name",
-                            supportsAllDrives=True,
-                        ).execute()
-                        apprenti.classe = parent_info.get("name", "")
-                        logger.info(f"  Classe: {apprenti.classe}")
+                    # Chercher tous les dossiers qui matchent cet apprenti
+                    mots = [m for m in nom_apprenti.split() if len(m) > 1]
+                    if mots:
+                        qp = []
+                        for mot in mots[:2]:
+                            qp.append(
+                                f"name contains '{scanner._escape_query(mot)}'"
+                            )
+                        query_classe = (
+                            f"mimeType = 'application/vnd.google-apps.folder' "
+                            f"and {' and '.join(qp)} "
+                            f"and trashed = false"
+                        )
+                        dossiers_apprenti = scanner._list_files(query_classe)
+                        # Pour chaque dossier, récupérer le parent
+                        for d in dossiers_apprenti:
+                            parents = d.get("parents", [])
+                            if parents:
+                                parent = scanner.service.files().get(
+                                    fileId=parents[0],
+                                    fields="name",
+                                    supportsAllDrives=True,
+                                ).execute()
+                                pname = parent.get("name", "")
+                                # Vérifier si ça ressemble à une classe
+                                pname_up = pname.upper()
+                                if any(kw in pname_up for kw in [
+                                    "NTC", "CC", "REM", "DP", "TP",
+                                    "BTS", "AIS", "DWWM", "CDA",
+                                    "TSSR", "SIO", "BACHELOR",
+                                ]):
+                                    apprenti.classe = pname
+                                    logger.info(f"  Classe: {pname}")
+                                    break
                 except Exception as e:
-                    logger.debug(f"  Erreur récupération classe: {e}")
+                    logger.debug(f"  Erreur classe: {e}")
 
             # Chercher les fichiers par NOM dans tout le Drive
             # (car le listing par parent ne fonctionne pas)
