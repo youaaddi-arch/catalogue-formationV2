@@ -15,6 +15,20 @@ class LocalScanner:
 
     def __init__(self, base_path: str = None):
         self.base_path = base_path or config.LOCAL_DOSSIER_PATH
+        # Essayer de trouver le dossier par glob si le chemin exact ne marche pas
+        if not Path(self.base_path).exists():
+            import glob
+            patterns = [
+                os.path.expanduser("~/Downloads/DOSSIER*OPCO*ENVOYE*"),
+                os.path.expanduser("~/Downloads/DOSSIER*OPCO*"),
+                os.path.expanduser("~/Downloads/dossier*opco*"),
+            ]
+            for pattern in patterns:
+                matches = glob.glob(pattern)
+                if matches:
+                    self.base_path = matches[0]
+                    logger.info(f"Dossier local trouvé par glob: {self.base_path}")
+                    break
 
     def scanner_dossiers_apprenants(self) -> dict:
         """
