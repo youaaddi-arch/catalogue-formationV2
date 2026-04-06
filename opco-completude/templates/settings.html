@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - OPCO EP Complétude{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-gear"></i> Configuration</h4>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Paramètres actuels</div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th style="width: 40%;">Fichier credentials Google</th>
+                            <td>
+                                <code>{{ config.credentials_path }}</code>
+                                {% if config.credentials_path %}
+                                <span class="badge bg-info ms-2">Configuré</span>
+                                {% else %}
+                                <span class="badge bg-danger ms-2">Non configuré</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Drive SOURCE (PROMOTIONS PNBS)</th>
+                            <td><code>{{ config.drive_source_id }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Drive CIBLE (Contrôle OPCO EP)</th>
+                            <td><code>{{ config.drive_cible_id }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Fichier Excel CONSTATS EP</th>
+                            <td><code>{{ config.excel_path }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Nombre d'apprentis</th>
+                            <td><span class="badge bg-primary">{{ config.nb_apprentis }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Nombre de pièces à vérifier</th>
+                            <td><span class="badge bg-primary">{{ config.nb_pieces }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Seuil fuzzy matching</th>
+                            <td><span class="badge bg-secondary">{{ config.fuzzy_threshold }}%</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Instructions de configuration</div>
+            <div class="card-body">
+                <h6>1. Fichier credentials Google</h6>
+                <p>Placez le fichier JSON du Service Account Google dans le dossier de l'application sous le nom <code>credentials.json</code>, ou définissez la variable d'environnement <code>GOOGLE_CREDENTIALS_PATH</code>.</p>
+
+                <h6>2. Fichier Excel CONSTATS EP</h6>
+                <p>Placez le fichier <code>EP & CONTROLE MARS 26.xlsx</code> dans le dossier de l'application, ou définissez la variable d'environnement <code>EXCEL_PATH</code>.</p>
+
+                <h6>3. Variables d'environnement</h6>
+                <pre class="bg-light p-3 rounded"><code>export GOOGLE_CREDENTIALS_PATH=/chemin/vers/credentials.json
+export EXCEL_PATH=/chemin/vers/EP\ &amp;\ CONTROLE\ MARS\ 26.xlsx
+export FLASK_DEBUG=True
+export SECRET_KEY=votre-cle-secrete</code></pre>
+
+                <h6>4. Modification des paramètres</h6>
+                <p>Pour modifier les IDs de Drive, la liste des apprentis ou les pièces à vérifier, éditez le fichier <code>config.py</code>.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Pièces vérifiées</div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item list-group-item-primary"><strong>Obligatoires</strong></li>
+                <li class="list-group-item">CERFA (contrat d'apprentissage)</li>
+                <li class="list-group-item">Convention de formation</li>
+                <li class="list-group-item">CNI (pièce d'identité)</li>
+                <li class="list-group-item">Planning de formation</li>
+                <li class="list-group-item">Émargements</li>
+                <li class="list-group-item">Attestation matériel/PC</li>
+                <li class="list-group-item list-group-item-warning"><strong>Conditionnelles</strong></li>
+                <li class="list-group-item">Formulaire de rupture</li>
+                <li class="list-group-item">ECF</li>
+                <li class="list-group-item">Devoirs / QCM / Contrôles</li>
+                <li class="list-group-item list-group-item-info"><strong>Transversales</strong></li>
+                <li class="list-group-item">Facture bloquée</li>
+                <li class="list-group-item">Accord PEC (APEC)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

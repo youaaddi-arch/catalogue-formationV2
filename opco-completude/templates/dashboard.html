@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - OPCO EP Complétude{% endblock %}
+
+{% block content %}
+<!-- Erreur -->
+{% if erreur %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> <strong>Erreur :</strong> {{ erreur }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Barre d'actions -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">Tableau de bord - Contrôle OPCO EP</h4>
+        {% if derniere_maj %}
+        <small class="text-muted">Dernier scan : {{ derniere_maj }}</small>
+        {% endif %}
+    </div>
+    <div>
+        <button id="btn-scan" class="btn btn-primary" {% if en_cours %}disabled{% endif %}>
+            <i class="bi bi-arrow-clockwise"></i>
+            {% if en_cours %}Scan en cours...{% else %}Lancer le scan{% endif %}
+        </button>
+    </div>
+</div>
+
+<!-- Progression du scan -->
+<div id="scan-progress" class="mb-3" style="display: {% if en_cours %}block{% else %}none{% endif %};">
+    <div class="progress" style="height: 25px;">
+        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+             role="progressbar" style="width: 0%;">0%</div>
+    </div>
+    <small id="progress-text" class="text-muted mt-1">Initialisation...</small>
+</div>
+
+{% if stats %}
+<!-- Indicateurs globaux -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body text-center">
+                <h2>{{ stats.nb_total }}</h2>
+                <small>Apprentis total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card bg-success text-white">
+            <div class="card-body text-center">
+                <h2>{{ stats.nb_complets }}</h2>
+                <small>Dossiers complets</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card bg-danger text-white">
+            <div class="card-body text-center">
+                <h2>{{ stats.nb_incomplets }}</h2>
+                <small>Dossiers incomplets</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h2>{{ stats.nb_sans_dossier }}</h2>
+                <small>Sans dossier Drive</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card bg-info text-white">
+            <div class="card-body text-center">
+                <h2>{{ stats.score_moyen }}%</h2>
+                <small>Score moyen</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card stat-card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h2>{{ stats.progression_globale }}%</h2>
+                <small>Progression globale</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barre de progression globale -->
+<div class="mb-4">
+    <div class="progress" style="height: 20px;">
+        <div class="progress-bar bg-success" style="width: {{ stats.progression_globale }}%;">
+            {{ stats.progression_globale }}% dossiers complets
+        </div>
+    </div>
+</div>
+
+<!-- Pièces manquantes les plus fréquentes -->
+{% if stats.top_manquantes %}
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-bar-chart"></i> Pièces manquantes les plus fréquentes</div>
+    <div class="card-body">
+        <div class="row">
+            {% for nom_piece, count in stats.top_manquantes %}
+            <div class="col-md-4 col-lg-3 mb-2">
+                <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                    <span class="text-truncate" title="{{ nom_piece }}">{{ nom_piece }}</span>
+                    <span class="badge bg-danger ms-2">{{ count }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if apprentis %}
+<!-- Filtres -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" id="search-input" class="form-control"
+                           placeholder="Rechercher un apprenti...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="filter-statut" class="form-select form-select-sm">
+                    <option value="">Tous les statuts</option>
+                    <option value="complet">Complets uniquement</option>
+                    <option value="incomplet">Incomplets uniquement</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filter-piece" class="form-select form-select-sm">
+                    <option value="">Toutes les pièces</option>
+                    <option value="cerfa">CERFA manquant</option>
+                    <option value="convention">Convention manquante</option>
+                    <option value="cni">CNI manquante</option>
+                    <option value="planning">Planning manquant</option>
+                    <option value="emargement">Émargements manquants</option>
+                    <option value="attestation">Attestation manquante</option>
+                    <option value="facture">Facture manquante</option>
+                    <option value="apec">APEC manquant</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="sort-by" class="form-select form-select-sm">
+                    <option value="nom">Tri par nom</option>
+                    <option value="score-asc">Score croissant</option>
+                    <option value="score-desc">Score décroissant</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tableau des apprentis -->
+<div class="table-responsive">
+    <table class="table table-hover table-sm" id="table-apprentis">
+        <thead class="table-dark sticky-top">
+            <tr>
+                <th>#</th>
+                <th>Apprenti</th>
+                <th>N° Dossier</th>
+                <th>Statut dossier</th>
+                <th>CERFA</th>
+                <th>Convention</th>
+                <th>CNI</th>
+                <th>Planning</th>
+                <th>Émargements</th>
+                <th>Attestation</th>
+                <th>Rupture</th>
+                <th>ECF</th>
+                <th>Devoirs</th>
+                <th>Facture</th>
+                <th>APEC</th>
+                <th>Score</th>
+                <th>Actions CFA</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for apprenti in apprentis %}
+            <tr class="apprenti-row {% if apprenti.est_complet %}table-success{% elif apprenti.score_completude < 50 %}table-danger{% endif %}"
+                data-nom="{{ apprenti.nom|lower }}"
+                data-score="{{ apprenti.score_completude }}"
+                data-complet="{{ 'complet' if apprenti.est_complet else 'incomplet' }}"
+                data-pieces="{{ apprenti.pieces|map(attribute='id')|join(',') }}"
+                data-manquantes="{% for p in apprenti.pieces_manquantes %}{{ p.id }},{% endfor %}">
+                <td>{{ loop.index }}</td>
+                <td>
+                    <a href="/apprenti/{{ loop.index0 }}" class="text-decoration-none fw-bold">
+                        {{ apprenti.nom }}
+                    </a>
+                    {% if not apprenti.dossier_id %}
+                    <span class="badge bg-warning text-dark ms-1" title="Dossier Drive non trouvé">
+                        <i class="bi bi-folder-x"></i>
+                    </span>
+                    {% endif %}
+                </td>
+                <td>{{ apprenti.donnees_excel.numero_dossier if apprenti.donnees_excel and apprenti.donnees_excel.numero_dossier else '-' }}</td>
+                <td>
+                    {% if apprenti.donnees_excel and apprenti.donnees_excel.statut_dossier %}
+                    <span class="badge bg-secondary">{{ apprenti.donnees_excel.statut_dossier }}</span>
+                    {% else %}-{% endif %}
+                </td>
+                {% for piece in apprenti.pieces %}
+                <td class="text-center piece-cell">
+                    {% if piece.statut == 'trouvee' %}
+                    <span class="text-success" title="{{ piece.fichier_nom or '' }}"><i class="bi bi-check-circle-fill"></i></span>
+                    {% elif piece.statut == 'manquante' %}
+                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i></span>
+                    {% elif piece.statut == 'incertaine' %}
+                    <span class="text-warning"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    {% elif piece.statut == 'non_applicable' %}
+                    <span class="text-muted" title="Non applicable"><i class="bi bi-dash-circle"></i></span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-1" style="height: 6px; min-width: 50px;">
+                            <div class="progress-bar {% if apprenti.score_completude == 100 %}bg-success{% elif apprenti.score_completude >= 70 %}bg-info{% elif apprenti.score_completude >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                                 style="width: {{ apprenti.score_completude }}%;"></div>
+                        </div>
+                        <small class="text-nowrap">{{ apprenti.nb_pieces_trouvees }}/{{ apprenti.nb_pieces_attendues }}</small>
+                    </div>
+                </td>
+                <td class="small text-truncate" style="max-width: 200px;"
+                    title="{{ apprenti.donnees_excel.actions_cfa if apprenti.donnees_excel and apprenti.donnees_excel.actions_cfa else '' }}">
+                    {{ apprenti.donnees_excel.actions_cfa if apprenti.donnees_excel and apprenti.donnees_excel.actions_cfa else '-' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% elif not en_cours and not erreur %}
+<!-- État initial -->
+<div class="text-center py-5">
+    <i class="bi bi-folder-symlink display-1 text-muted"></i>
+    <h3 class="mt-3 text-muted">Aucun scan effectué</h3>
+    <p class="text-muted">Cliquez sur "Lancer le scan" pour analyser les dossiers Google Drive.</p>
+    <button id="btn-scan-hero" class="btn btn-primary btn-lg mt-2">
+        <i class="bi bi-arrow-clockwise"></i> Lancer le scan
+    </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Lancer le scan
+    const btnScan = document.getElementById('btn-scan');
+    const btnScanHero = document.getElementById('btn-scan-hero');
+    const scanProgress = document.getElementById('scan-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    function lancerScan() {
+        if (btnScan) {
+            btnScan.disabled = true;
+            btnScan.innerHTML = '<i class="bi bi-hourglass-split"></i> Scan en cours...';
+        }
+        if (scanProgress) scanProgress.style.display = 'block';
+
+        fetch('/scan', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'completed') {
+                    window.location.reload();
+                }
+            })
+            .catch(err => {
+                alert('Erreur lors du scan: ' + err);
+                if (btnScan) {
+                    btnScan.disabled = false;
+                    btnScan.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Lancer le scan';
+                }
+            });
+
+        // Polling de la progression
+        const interval = setInterval(() => {
+            fetch('/scan/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (progressBar) {
+                        progressBar.style.width = data.progression + '%';
+                        progressBar.textContent = data.progression + '%';
+                    }
+                    if (!data.en_cours) {
+                        clearInterval(interval);
+                    }
+                });
+        }, 2000);
+    }
+
+    if (btnScan) btnScan.addEventListener('click', lancerScan);
+    if (btnScanHero) btnScanHero.addEventListener('click', lancerScan);
+
+    // Filtres et recherche
+    const searchInput = document.getElementById('search-input');
+    const filterStatut = document.getElementById('filter-statut');
+    const filterPiece = document.getElementById('filter-piece');
+    const sortBy = document.getElementById('sort-by');
+
+    function filtrerTableau() {
+        const search = searchInput ? searchInput.value.toLowerCase() : '';
+        const statut = filterStatut ? filterStatut.value : '';
+        const piece = filterPiece ? filterPiece.value : '';
+        const rows = document.querySelectorAll('.apprenti-row');
+
+        rows.forEach(row => {
+            let visible = true;
+
+            // Recherche par nom
+            if (search && !row.dataset.nom.includes(search)) {
+                visible = false;
+            }
+
+            // Filtre par statut
+            if (statut && row.dataset.complet !== statut) {
+                visible = false;
+            }
+
+            // Filtre par pièce manquante
+            if (piece && !row.dataset.manquantes.includes(piece)) {
+                visible = false;
+            }
+
+            row.style.display = visible ? '' : 'none';
+        });
+    }
+
+    function trierTableau() {
+        const tbody = document.querySelector('#table-apprentis tbody');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('.apprenti-row'));
+        const sort = sortBy ? sortBy.value : 'nom';
+
+        rows.sort((a, b) => {
+            if (sort === 'nom') {
+                return a.dataset.nom.localeCompare(b.dataset.nom);
+            } else if (sort === 'score-asc') {
+                return parseFloat(a.dataset.score) - parseFloat(b.dataset.score);
+            } else if (sort === 'score-desc') {
+                return parseFloat(b.dataset.score) - parseFloat(a.dataset.score);
+            }
+            return 0;
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filtrerTableau);
+    if (filterStatut) filterStatut.addEventListener('change', filtrerTableau);
+    if (filterPiece) filterPiece.addEventListener('change', filtrerTableau);
+    if (sortBy) sortBy.addEventListener('change', trierTableau);
+});
+</script>
+{% endblock %}
