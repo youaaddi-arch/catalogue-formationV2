@@ -278,6 +278,33 @@ class DriveScanner:
 
         return self._list_files(query)
 
+    def obtenir_nom_parent(self, file_or_folder: dict) -> str:
+        """
+        Récupère le nom du dossier parent d'un fichier ou dossier.
+        Utilise le champ 'parents' retourné par l'API Drive.
+        """
+        parents = file_or_folder.get("parents", [])
+        if not parents:
+            return ""
+
+        parent_id = parents[0]
+        cache_key = f"parent_name|{parent_id}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        try:
+            parent = self.service.files().get(
+                fileId=parent_id,
+                fields="name",
+                supportsAllDrives=True,
+            ).execute()
+            name = parent.get("name", "")
+            self._cache[cache_key] = name
+            return name
+        except Exception as e:
+            logger.error(f"Erreur récupération parent {parent_id}: {e}")
+            return ""
+
     def chercher_fichiers_globaux(self, mot_cle: str) -> list:
         """
         Cherche tous les fichiers contenant un mot-clé dans tout le Drive.

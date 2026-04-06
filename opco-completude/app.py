@@ -170,7 +170,38 @@ def effectuer_scan():
                 apprenti.dossier_id = match_source["id"]
                 apprenti.dossier_nom = match_source["nom_match"]
                 apprenti.dossier_source = "source"
-                apprenti.classe = match_source.get("classe_name", "")
+
+            # Récupérer le nom de la classe (dossier parent de l'apprenti)
+            if drive_ok and apprenti.dossier_id:
+                classe_trouvee = match_source.get("classe_name", "") if match_source else ""
+                if not classe_trouvee:
+                    # Chercher le dossier de l'apprenti pour obtenir son parent
+                    dossier_info = None
+                    if match_source:
+                        dossier_info = match_source
+                    elif match_cible:
+                        dossier_info = match_cible
+                    if dossier_info:
+                        nom_parent = scanner.obtenir_nom_parent(
+                            {"parents": [dossier_info.get("id", "")]}
+                        )
+                        # Le parent direct est le dossier apprenti,
+                        # on veut le grand-parent (la classe)
+                        # Essayons de chercher directement le dossier
+                        try:
+                            folder = scanner.service.files().get(
+                                fileId=dossier_info["id"],
+                                fields="parents",
+                                supportsAllDrives=True,
+                            ).execute()
+                            parent_ids = folder.get("parents", [])
+                            if parent_ids:
+                                classe_trouvee = scanner.obtenir_nom_parent(
+                                    {"parents": parent_ids}
+                                )
+                        except Exception:
+                            pass
+                apprenti.classe = classe_trouvee
 
             # Chercher les fichiers par NOM dans tout le Drive
             # (car le listing par parent ne fonctionne pas)
