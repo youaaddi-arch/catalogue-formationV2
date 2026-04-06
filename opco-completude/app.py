@@ -110,9 +110,10 @@ def effectuer_scan():
         fichiers_apec.extend(
             local_scanner.trouver_fichiers_transversaux(DOSSIER_APEC_NOMS)
         )
-        fichiers_local_racine = local_scanner.lister_tous_fichiers_racine()
-        fichiers_factures.extend(fichiers_local_racine)
-        fichiers_apec.extend(fichiers_local_racine)
+        logger.info(
+            f"Fichiers transversaux: {len(fichiers_factures)} factures, "
+            f"{len(fichiers_apec)} APEC"
+        )
         scan_state["progression"] = 50
 
         # 6. Pour chaque apprenti, chercher son dossier et vérifier les pièces
