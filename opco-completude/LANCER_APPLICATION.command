@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "$(dirname "$0")/catalogue-formationV2/opco-completude"
+cd "$(dirname "$0")"
 echo "==================================="
 echo " Lancement de l'application OPCO EP"
 echo "==================================="
