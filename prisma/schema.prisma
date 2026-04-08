@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String   @default("")
+  lastName  String   @default("")
+  company   String   @default("")
+  phone     String   @default("")
+  tags      String   @default("") // JSON array stored as string
+  status    String   @default("active") // active, unsubscribed, bounced
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaignRecipients CampaignRecipient[]
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  htmlContent String   @default("")
+  textContent String   @default("")
+  status      String   @default("draft") // draft, scheduled, sending, sent, failed
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  totalSent   Int      @default(0)
+  totalOpened Int      @default(0)
+  totalClicked Int     @default(0)
+  totalBounced Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+}
+
+model CampaignRecipient {
+  id         String    @id @default(cuid())
+  campaignId String
+  contactId  String
+  status     String    @default("pending") // pending, sent, opened, clicked, bounced, failed
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  sentAt     DateTime?
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   @default("general") // general, promotion, newsletter, notification, welcome
+  subject     String   @default("")
+  htmlContent String
+  thumbnail   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Settings {
+  id        String @id @default("default")
+  smtpHost  String @default("")
+  smtpPort  Int    @default(587)
+  smtpUser  String @default("")
+  smtpPass  String @default("")
+  fromEmail String @default("")
+  fromName  String @default("")
+  company   String @default("")
+  website   String @default("")
+}
