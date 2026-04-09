@@ -19,8 +19,11 @@ from local_scanner import LocalScanner
 from excel_reader import lire_excel
 from matcher import (
     associer_donnees_excel,
+    chercher_nom_dans_fichier,
     construire_pieces_apprenti,
+    identifier_piece,
     normaliser_nom,
+    score_correspondance_nom,
     trouver_dossier_apprenti,
 )
 from models import Apprenti
@@ -579,6 +582,206 @@ def telecharger_pieces():
     finally:
         # Nettoyer le dossier temporaire
         shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+@app.route("/upload")
+def upload_page():
+    """Page d'upload de pièces jointes vers Google Drive."""
+    return render_template(
+        "upload.html",
+        apprentis_config=config.APPRENTIS,
+        pieces_config=config.TOUTES_PIECES,
+    )
+
+
+@app.route("/api/upload", methods=["POST"])
+def api_upload():
+    """
+    API d'upload : reçoit des fichiers, identifie l'apprenti et le type
+    de pièce par matching nom/prénom, puis upload dans le bon dossier
+    Google Drive CIBLE.
+
+    Retourne un JSON avec le résultat de chaque fichier traité.
+    """
+    fichiers = request.files.getlist("fichiers")
+    if not fichiers:
+        return jsonify({"error": "Aucun fichier envoyé"}), 400
+
+    # Connexion au Drive
+    scanner = DriveScanner()
+    if not scanner.connect():
+        return jsonify({
+            "error": "Impossible de se connecter à Google Drive. "
+                     "Vérifiez le fichier credentials.json."
+        }), 500
+
+    # Charger les dossiers existants dans le Drive CIBLE
+    logger.info("Chargement des dossiers existants dans le Drive CIBLE...")
+    dossiers_cible = scanner.trouver_dossiers_apprenants(config.DRIVE_CIBLE_ID)
+
+    resultats = []
+
+    for fichier in fichiers:
+        nom_original = fichier.filename or "fichier_inconnu"
+        contenu = fichier.read()
+        mime_type = fichier.content_type or "application/octet-stream"
+
+        resultat = {
+            "fichier": nom_original,
+            "taille": len(contenu),
+            "apprenti": None,
+            "piece_type": None,
+            "dossier_drive": None,
+            "statut": "erreur",
+            "message": "",
+        }
+
+        # 1. Identifier l'apprenti par le nom du fichier
+        meilleur_score = 0
+        meilleur_apprenti = None
+
+        for nom_apprenti in config.APPRENTIS:
+            score = score_correspondance_nom(nom_apprenti, nom_original)
+            if score > meilleur_score:
+                meilleur_score = score
+                meilleur_apprenti = nom_apprenti
+
+            # Chercher aussi si le nom est dans le nom du fichier
+            if chercher_nom_dans_fichier(nom_apprenti, nom_original):
+                score_partial = score_correspondance_nom(
+                    nom_apprenti, nom_original
+                )
+                effective = max(score_partial, 75)
+                if effective > meilleur_score:
+                    meilleur_score = effective
+                    meilleur_apprenti = nom_apprenti
+
+        if meilleur_score < config.FUZZY_THRESHOLD or not meilleur_apprenti:
+            resultat["message"] = (
+                f"Impossible d'identifier l'apprenti depuis le nom du fichier "
+                f"(meilleur score: {meilleur_score:.0f}%). "
+                f"Assurez-vous que le nom du fichier contient le nom de l'apprenti."
+            )
+            resultats.append(resultat)
+            continue
+
+        resultat["apprenti"] = meilleur_apprenti
+        resultat["score_match"] = round(meilleur_score, 1)
+
+        # 2. Identifier le type de pièce
+        pieces_ids = identifier_piece(nom_original, config.TOUTES_PIECES)
+        if pieces_ids:
+            piece_config = next(
+                (p for p in config.TOUTES_PIECES if p["id"] == pieces_ids[0]),
+                None,
+            )
+            if piece_config:
+                resultat["piece_type"] = piece_config["nom"]
+
+        # 3. Trouver ou créer le dossier de l'apprenti dans le Drive CIBLE
+        dossier_apprenti = scanner.trouver_ou_creer_dossier_apprenti(
+            meilleur_apprenti, config.DRIVE_CIBLE_ID
+        )
+
+        if not dossier_apprenti:
+            resultat["message"] = (
+                f"Apprenti identifié ({meilleur_apprenti}) mais impossible "
+                f"de trouver/créer son dossier dans le Drive."
+            )
+            resultats.append(resultat)
+            continue
+
+        resultat["dossier_drive"] = dossier_apprenti.get("name", "")
+
+        # 4. Uploader le fichier dans le dossier de l'apprenti
+        uploaded = scanner.upload_fichier(
+            contenu, nom_original, mime_type, dossier_apprenti["id"]
+        )
+
+        if uploaded:
+            resultat["statut"] = "succes"
+            resultat["fichier_id"] = uploaded.get("id", "")
+            resultat["lien"] = uploaded.get("webViewLink", "")
+            resultat["message"] = (
+                f"Uploadé dans le dossier de {meilleur_apprenti}"
+            )
+            logger.info(
+                f"Upload OK: {nom_original} -> {meilleur_apprenti} "
+                f"({dossier_apprenti['name']})"
+            )
+        else:
+            resultat["message"] = "Erreur lors de l'upload vers Google Drive."
+
+        resultats.append(resultat)
+
+    # Résumé
+    nb_succes = sum(1 for r in resultats if r["statut"] == "succes")
+    nb_erreurs = len(resultats) - nb_succes
+
+    return jsonify({
+        "resultats": resultats,
+        "resume": {
+            "total": len(resultats),
+            "succes": nb_succes,
+            "erreurs": nb_erreurs,
+        },
+    })
+
+
+@app.route("/api/identifier-fichier", methods=["POST"])
+def api_identifier_fichier():
+    """
+    API de pré-identification : avant l'upload, identifie l'apprenti
+    et le type de pièce pour chaque nom de fichier.
+    """
+    data = request.get_json()
+    if not data or "noms_fichiers" not in data:
+        return jsonify({"error": "Champ 'noms_fichiers' requis"}), 400
+
+    resultats = []
+
+    for nom_fichier in data["noms_fichiers"]:
+        resultat = {
+            "fichier": nom_fichier,
+            "apprenti": None,
+            "score_match": 0,
+            "piece_type": None,
+        }
+
+        # Identifier l'apprenti
+        meilleur_score = 0
+        meilleur_apprenti = None
+        for nom_apprenti in config.APPRENTIS:
+            score = score_correspondance_nom(nom_apprenti, nom_fichier)
+            if score > meilleur_score:
+                meilleur_score = score
+                meilleur_apprenti = nom_apprenti
+            if chercher_nom_dans_fichier(nom_apprenti, nom_fichier):
+                score_partial = score_correspondance_nom(
+                    nom_apprenti, nom_fichier
+                )
+                effective = max(score_partial, 75)
+                if effective > meilleur_score:
+                    meilleur_score = effective
+                    meilleur_apprenti = nom_apprenti
+
+        if meilleur_score >= config.FUZZY_THRESHOLD and meilleur_apprenti:
+            resultat["apprenti"] = meilleur_apprenti
+            resultat["score_match"] = round(meilleur_score, 1)
+
+        # Identifier le type de pièce
+        pieces_ids = identifier_piece(nom_fichier, config.TOUTES_PIECES)
+        if pieces_ids:
+            piece_config = next(
+                (p for p in config.TOUTES_PIECES if p["id"] == pieces_ids[0]),
+                None,
+            )
+            if piece_config:
+                resultat["piece_type"] = piece_config["nom"]
+
+        resultats.append(resultat)
+
+    return jsonify(resultats)
 
 
 @app.route("/settings")

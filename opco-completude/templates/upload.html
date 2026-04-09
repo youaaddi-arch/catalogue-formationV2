@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Upload pièces jointes - OPCO EP{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <h4 class="mb-3">
+            <i class="bi bi-cloud-arrow-up"></i>
+            Upload de pièces jointes vers Google Drive
+        </h4>
+        <p class="text-muted">
+            Glissez-déposez vos fichiers ou sélectionnez-les. Chaque fichier sera
+            automatiquement envoyé dans le dossier Google Drive de l'apprenti correspondant,
+            grâce au matching nom/prénom dans le nom du fichier.
+        </p>
+
+        <!-- Zone de drop -->
+        <div id="drop-zone" class="border border-3 border-dashed rounded-3 p-5 text-center mb-4 bg-light"
+             style="cursor: pointer; transition: all 0.2s;">
+            <i class="bi bi-cloud-arrow-up display-3 text-primary"></i>
+            <h5 class="mt-3">Glissez vos fichiers ici</h5>
+            <p class="text-muted mb-2">ou cliquez pour sélectionner</p>
+            <input type="file" id="file-input" multiple class="d-none"
+                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.csv">
+            <button class="btn btn-outline-primary btn-sm" onclick="document.getElementById('file-input').click()">
+                <i class="bi bi-folder2-open"></i> Parcourir...
+            </button>
+        </div>
+
+        <!-- Tableau de pré-identification -->
+        <div id="fichiers-preview" class="d-none">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-check"></i> Fichiers sélectionnés</span>
+                    <div>
+                        <button class="btn btn-sm btn-outline-danger me-2" id="btn-clear">
+                            <i class="bi bi-trash"></i> Tout effacer
+                        </button>
+                        <button class="btn btn-sm btn-success" id="btn-upload" disabled>
+                            <i class="bi bi-cloud-arrow-up"></i> Envoyer vers Google Drive
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:5%">#</th>
+                                <th style="width:30%">Fichier</th>
+                                <th style="width:10%">Taille</th>
+                                <th style="width:25%">Apprenti identifié</th>
+                                <th style="width:15%">Type de pièce</th>
+                                <th style="width:15%">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fichiers-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Barre de progression globale -->
+            <div id="upload-progress-section" class="d-none mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <small id="upload-progress-text" class="text-muted">Préparation...</small>
+                    <small id="upload-progress-count" class="text-muted">0/0</small>
+                </div>
+                <div class="progress" style="height: 20px;">
+                    <div id="upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                         style="width: 0%;">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Résultats -->
+        <div id="upload-resultats" class="d-none">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-check-circle"></i> Résultats de l'upload
+                </div>
+                <div class="card-body">
+                    <div id="resultats-resume" class="mb-3"></div>
+                    <div id="resultats-detail"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info : nommage des fichiers -->
+        <div class="card mt-4">
+            <div class="card-header"><i class="bi bi-info-circle"></i> Comment nommer vos fichiers</div>
+            <div class="card-body">
+                <p>Pour que le matching automatique fonctionne, le nom du fichier doit contenir :</p>
+                <ul>
+                    <li><strong>Le nom de l'apprenti</strong> (au moins le nom et le prénom)</li>
+                    <li><strong>Le type de pièce</strong> (optionnel, pour catégorisation)</li>
+                </ul>
+                <p class="mb-1"><strong>Exemples de noms valides :</strong></p>
+                <div class="bg-light p-2 rounded">
+                    <code>CERFA_OUSMAIL_FERROUDJA.pdf</code><br>
+                    <code>Convention_formation_HATEM_GAIEB.pdf</code><br>
+                    <code>CNI_Alya_Grini.jpg</code><br>
+                    <code>planning_NTC3_KIYAN_ALIM.pdf</code><br>
+                    <code>emargement_ADAM_ALIOUI.pdf</code><br>
+                    <code>attestation_materiel_ORLANE_DESRUE.pdf</code>
+                </div>
+                <p class="mt-2 mb-0">
+                    <strong>Mots-clés reconnus :</strong>
+                    <span class="badge bg-primary">cerfa</span>
+                    <span class="badge bg-primary">convention</span>
+                    <span class="badge bg-primary">cni / passeport / visa</span>
+                    <span class="badge bg-primary">planning</span>
+                    <span class="badge bg-primary">emargement / presence</span>
+                    <span class="badge bg-primary">attestation</span>
+                    <span class="badge bg-primary">rupture</span>
+                    <span class="badge bg-primary">ecf</span>
+                    <span class="badge bg-primary">devoir / qcm</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const previewSection = document.getElementById('fichiers-preview');
+    const tableBody = document.getElementById('fichiers-table-body');
+    const btnUpload = document.getElementById('btn-upload');
+    const btnClear = document.getElementById('btn-clear');
+    const progressSection = document.getElementById('upload-progress-section');
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    const progressCount = document.getElementById('upload-progress-count');
+    const resultatsSection = document.getElementById('upload-resultats');
+    const resultatsResume = document.getElementById('resultats-resume');
+    const resultatsDetail = document.getElementById('resultats-detail');
+
+    let fichiersSelectionnes = [];
+
+    // --- Drag & Drop ---
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+    });
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+        ajouterFichiers(e.dataTransfer.files);
+    });
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', function() {
+        ajouterFichiers(fileInput.files);
+        fileInput.value = '';
+    });
+
+    function formatTaille(bytes) {
+        if (bytes < 1024) return bytes + ' o';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+    }
+
+    function ajouterFichiers(fileList) {
+        for (let f of fileList) {
+            fichiersSelectionnes.push(f);
+        }
+        rafraichirTableau();
+        preIdentifier();
+    }
+
+    function rafraichirTableau() {
+        tableBody.innerHTML = '';
+        if (fichiersSelectionnes.length === 0) {
+            previewSection.classList.add('d-none');
+            return;
+        }
+        previewSection.classList.remove('d-none');
+        btnUpload.disabled = false;
+
+        fichiersSelectionnes.forEach((f, i) => {
+            const tr = document.createElement('tr');
+            tr.id = 'fichier-row-' + i;
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td class="text-truncate" style="max-width: 250px;" title="${f.name}">
+                    <i class="bi bi-file-earmark"></i> ${f.name}
+                </td>
+                <td><small>${formatTaille(f.size)}</small></td>
+                <td id="apprenti-${i}"><span class="spinner-border spinner-border-sm"></span></td>
+                <td id="piece-${i}"><span class="spinner-border spinner-border-sm"></span></td>
+                <td id="statut-${i}"><span class="badge bg-secondary">En attente</span></td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function preIdentifier() {
+        const noms = fichiersSelectionnes.map(f => f.name);
+        fetch('/api/identifier-fichier', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({noms_fichiers: noms})
+        })
+        .then(r => r.json())
+        .then(data => {
+            data.forEach((res, i) => {
+                const cellApprenti = document.getElementById('apprenti-' + i);
+                const cellPiece = document.getElementById('piece-' + i);
+                if (!cellApprenti) return;
+
+                if (res.apprenti) {
+                    cellApprenti.innerHTML = `
+                        <span class="text-success fw-bold">${res.apprenti}</span>
+                        <br><small class="text-muted">Score: ${res.score_match}%</small>
+                    `;
+                } else {
+                    cellApprenti.innerHTML = `
+                        <span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Non identifié</span>
+                    `;
+                }
+
+                if (res.piece_type) {
+                    cellPiece.innerHTML = `<span class="badge bg-info">${res.piece_type}</span>`;
+                } else {
+                    cellPiece.innerHTML = `<small class="text-muted">-</small>`;
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Erreur pré-identification:', err);
+            fichiersSelectionnes.forEach((_, i) => {
+                const cell = document.getElementById('apprenti-' + i);
+                if (cell) cell.innerHTML = '<small class="text-muted">-</small>';
+                const cellP = document.getElementById('piece-' + i);
+                if (cellP) cellP.innerHTML = '<small class="text-muted">-</small>';
+            });
+        });
+    }
+
+    // --- Upload ---
+    btnUpload.addEventListener('click', function() {
+        btnUpload.disabled = true;
+        btnClear.disabled = true;
+        progressSection.classList.remove('d-none');
+        resultatsSection.classList.add('d-none');
+
+        const formData = new FormData();
+        fichiersSelectionnes.forEach(f => formData.append('fichiers', f));
+
+        const total = fichiersSelectionnes.length;
+        progressText.textContent = `Upload de ${total} fichier(s)...`;
+        progressCount.textContent = `0/${total}`;
+        progressBar.style.width = '10%';
+        progressBar.textContent = '10%';
+
+        // Mettre les statuts en "upload"
+        fichiersSelectionnes.forEach((_, i) => {
+            const cell = document.getElementById('statut-' + i);
+            if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Upload...</span>';
+        });
+
+        fetch('/api/upload', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(data => {
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+
+            if (data.error) {
+                progressBar.classList.add('bg-danger');
+                progressText.textContent = 'Erreur: ' + data.error;
+                btnUpload.disabled = false;
+                btnClear.disabled = false;
+                return;
+            }
+
+            const resume = data.resume;
+            progressCount.textContent = `${resume.succes}/${resume.total} envoyés`;
+            progressText.textContent = 'Terminé !';
+
+            if (resume.erreurs === 0) {
+                progressBar.classList.add('bg-success');
+            } else {
+                progressBar.classList.add('bg-warning');
+            }
+
+            // Mettre à jour le statut de chaque fichier
+            data.resultats.forEach((res, i) => {
+                const cell = document.getElementById('statut-' + i);
+                const row = document.getElementById('fichier-row-' + i);
+                if (!cell) return;
+
+                if (res.statut === 'succes') {
+                    cell.innerHTML = `<span class="badge bg-success"><i class="bi bi-check-lg"></i> OK</span>`;
+                    if (row) row.classList.add('table-success');
+                } else {
+                    cell.innerHTML = `<span class="badge bg-danger"><i class="bi bi-x-lg"></i> Erreur</span>`;
+                    if (row) row.classList.add('table-danger');
+                }
+            });
+
+            // Afficher le résumé détaillé
+            resultatsSection.classList.remove('d-none');
+            resultatsResume.innerHTML = `
+                <div class="row text-center">
+                    <div class="col">
+                        <h3 class="text-primary">${resume.total}</h3>
+                        <small>Fichiers traités</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="text-success">${resume.succes}</h3>
+                        <small>Envoyés avec succès</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="text-danger">${resume.erreurs}</h3>
+                        <small>Erreurs</small>
+                    </div>
+                </div>
+            `;
+
+            let detailHtml = '<div class="list-group mt-3">';
+            data.resultats.forEach(res => {
+                const isOk = res.statut === 'succes';
+                const icon = isOk ? 'check-circle-fill text-success' : 'x-circle-fill text-danger';
+                const lien = res.lien ? `<a href="${res.lien}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-box-arrow-up-right"></i> Voir</a>` : '';
+                detailHtml += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <i class="bi bi-${icon}"></i>
+                                <strong>${res.fichier}</strong>
+                                ${lien}
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            ${res.apprenti ? '<i class="bi bi-person"></i> ' + res.apprenti : ''}
+                            ${res.piece_type ? ' &mdash; <i class="bi bi-file-earmark"></i> ' + res.piece_type : ''}
+                            ${res.dossier_drive ? ' &mdash; <i class="bi bi-folder"></i> ' + res.dossier_drive : ''}
+                        </small>
+                        ${!isOk ? '<br><small class="text-danger">' + res.message + '</small>' : ''}
+                    </div>
+                `;
+            });
+            detailHtml += '</div>';
+            resultatsDetail.innerHTML = detailHtml;
+
+            btnClear.disabled = false;
+        })
+        .catch(err => {
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.classList.add('bg-danger');
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Erreur: ' + err;
+            btnUpload.disabled = false;
+            btnClear.disabled = false;
+        });
+    });
+
+    // --- Clear ---
+    btnClear.addEventListener('click', function() {
+        fichiersSelectionnes = [];
+        rafraichirTableau();
+        resultatsSection.classList.add('d-none');
+        progressSection.classList.add('d-none');
+        progressBar.style.width = '0%';
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+    });
+});
+</script>
+{% endblock %}

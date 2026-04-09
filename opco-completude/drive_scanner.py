@@ -8,13 +8,13 @@ from typing import Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBaseUpload
 
 import config
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # Patterns de noms de classes connus
 CLASSE_PATTERNS = re.compile(
@@ -512,6 +512,135 @@ class DriveScanner:
         except Exception as e:
             logger.error(f"Erreur inattendue téléchargement {file_id}: {e}")
             return None
+
+    def creer_dossier(self, nom: str, parent_id: str) -> Optional[dict]:
+        """
+        Crée un dossier dans Google Drive sous le parent donné.
+
+        Returns:
+            Métadonnées du dossier créé {id, name, webViewLink} ou None.
+        """
+        if not self.service:
+            return None
+
+        try:
+            metadata = {
+                "name": nom,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": [parent_id],
+            }
+            dossier = self.service.files().create(
+                body=metadata,
+                fields="id, name, webViewLink",
+                supportsAllDrives=True,
+            ).execute()
+            logger.info(f"Dossier créé: {nom} (id={dossier['id']})")
+            return dossier
+        except HttpError as e:
+            logger.error(f"Erreur création dossier '{nom}': {e}")
+            return None
+
+    def upload_fichier(self, contenu: bytes, nom_fichier: str,
+                       mime_type: str, parent_id: str) -> Optional[dict]:
+        """
+        Upload un fichier dans un dossier Google Drive.
+
+        Args:
+            contenu: Contenu du fichier en bytes
+            nom_fichier: Nom du fichier à créer
+            mime_type: Type MIME du fichier
+            parent_id: ID du dossier parent dans Google Drive
+
+        Returns:
+            Métadonnées du fichier créé {id, name, webViewLink} ou None.
+        """
+        if not self.service:
+            return None
+
+        try:
+            metadata = {
+                "name": nom_fichier,
+                "parents": [parent_id],
+            }
+            media = MediaIoBaseUpload(
+                io.BytesIO(contenu),
+                mimetype=mime_type,
+                resumable=True,
+            )
+            fichier = self.service.files().create(
+                body=metadata,
+                media_body=media,
+                fields="id, name, webViewLink",
+                supportsAllDrives=True,
+            ).execute()
+            logger.info(
+                f"Fichier uploadé: {nom_fichier} -> {parent_id} "
+                f"(id={fichier['id']})"
+            )
+            return fichier
+        except HttpError as e:
+            logger.error(f"Erreur upload '{nom_fichier}': {e}")
+            return None
+
+    def trouver_ou_creer_dossier_apprenti(
+        self, nom_apprenti: str, drive_cible_id: str,
+        dossier_parent_nom: str = None,
+    ) -> Optional[dict]:
+        """
+        Trouve le dossier Drive d'un apprenti, ou le crée s'il n'existe pas.
+
+        Cherche d'abord dans les sections "Dossiers apprenants" existantes,
+        puis crée dans la première section si introuvable.
+
+        Returns:
+            {id, name, webViewLink} du dossier trouvé/créé, ou None.
+        """
+        from matcher import score_correspondance_nom
+
+        dossier_parent_nom = dossier_parent_nom or config.DOSSIERS_APPRENANTS[0]
+
+        # 1. Chercher dans les dossiers existants
+        dossiers_racine = self.lister_dossiers_racine(drive_cible_id)
+        meilleur_score = 0
+        meilleur_match = None
+
+        for dossier_racine in dossiers_racine:
+            if dossier_racine["name"] not in config.DOSSIERS_APPRENANTS:
+                continue
+            sous_dossiers = self.lister_sous_dossiers(
+                dossier_racine["id"], drive_cible_id
+            )
+            for sd in sous_dossiers:
+                score = score_correspondance_nom(nom_apprenti, sd["name"])
+                if score > meilleur_score:
+                    meilleur_score = score
+                    meilleur_match = sd
+
+        if meilleur_match and meilleur_score >= config.FUZZY_THRESHOLD:
+            logger.info(
+                f"Dossier trouvé pour {nom_apprenti}: "
+                f"{meilleur_match['name']} (score={meilleur_score:.0f})"
+            )
+            return meilleur_match
+
+        # 2. Pas trouvé → créer dans le premier dossier "Dossiers apprenants"
+        parent_cible = None
+        for dr in dossiers_racine:
+            if dr["name"] == dossier_parent_nom:
+                parent_cible = dr
+                break
+
+        if not parent_cible:
+            # Créer le dossier parent lui-même
+            parent_cible = self.creer_dossier(dossier_parent_nom, drive_cible_id)
+            if not parent_cible:
+                logger.error(
+                    f"Impossible de créer le dossier parent '{dossier_parent_nom}'"
+                )
+                return None
+
+        nouveau = self.creer_dossier(nom_apprenti, parent_cible["id"])
+        return nouveau
 
     def clear_cache(self):
         """Vide le cache des requêtes."""
