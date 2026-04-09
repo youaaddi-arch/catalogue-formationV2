@@ -87,7 +87,7 @@ class Apprenti:
         result = {
             "Nom": self.nom,
             "Classe": self.classe or "",
-            "Date d'embauche": self.date_embauche or "",
+            "Date début contrat (CERFA)": self.date_embauche or "",
             "Jour de cours": self.jour_cours or "",
             "Début formation": self.date_debut_formation or "",
             "Fin formation": self.date_fin_formation or "",

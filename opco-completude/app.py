@@ -19,6 +19,7 @@ from matcher import (
     normaliser_nom,
     trouver_dossier_apprenti,
 )
+from cerfa_parser import extraire_date_contrat_depuis_pdf, extraire_date_contrat_depuis_fichier
 from models import Apprenti
 
 # Logging
@@ -261,6 +262,48 @@ def effectuer_scan():
             apprenti.pieces = construire_pieces_apprenti(
                 apprenti, fichiers_dossier, fichiers_factures, fichiers_apec
             )
+
+            # Extraire la date de début de contrat depuis le CERFA PDF
+            if not apprenti.date_embauche:
+                piece_cerfa = next(
+                    (p for p in apprenti.pieces
+                     if p.id == "cerfa" and p.statut == "trouvee"),
+                    None,
+                )
+                if piece_cerfa:
+                    # Essayer depuis le Drive
+                    if piece_cerfa.fichier_id and drive_ok:
+                        logger.info(
+                            f"  Téléchargement CERFA pour extraction date: "
+                            f"{piece_cerfa.fichier_nom}"
+                        )
+                        pdf_bytes = scanner.telecharger_fichier(
+                            piece_cerfa.fichier_id
+                        )
+                        if pdf_bytes:
+                            date_contrat = extraire_date_contrat_depuis_pdf(
+                                pdf_bytes
+                            )
+                            if date_contrat:
+                                apprenti.date_embauche = date_contrat
+                                logger.info(
+                                    f"  -> Date début contrat: {date_contrat}"
+                                )
+
+                    # Essayer depuis le fichier local si pas trouvé
+                    if not apprenti.date_embauche and piece_cerfa.source == "local":
+                        for f in fichiers_dossier:
+                            if f["name"] == piece_cerfa.fichier_nom and "path" in f:
+                                date_contrat = extraire_date_contrat_depuis_fichier(
+                                    f["path"]
+                                )
+                                if date_contrat:
+                                    apprenti.date_embauche = date_contrat
+                                    logger.info(
+                                        f"  -> Date début contrat (local): "
+                                        f"{date_contrat}"
+                                    )
+                                break
 
             # Calculer le score
             apprenti.calculer_score()

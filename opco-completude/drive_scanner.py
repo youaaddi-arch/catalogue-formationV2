@@ -1,5 +1,6 @@
 """Module de scan Google Drive pour l'application OPCO EP."""
 
+import io
 import logging
 import re
 from typing import Optional
@@ -7,6 +8,7 @@ from typing import Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaIoBaseDownload
 
 import config
 
@@ -451,6 +453,45 @@ class DriveScanner:
             f"and trashed = false"
         )
         return self._list_files(query)
+
+    def telecharger_fichier(self, file_id: str) -> Optional[bytes]:
+        """Télécharge le contenu d'un fichier depuis Google Drive.
+
+        Retourne les bytes du fichier, ou None en cas d'erreur.
+        Gère aussi l'export des Google Docs en PDF.
+        """
+        try:
+            # D'abord vérifier le type de fichier
+            file_meta = self.service.files().get(
+                fileId=file_id,
+                fields="mimeType",
+                supportsAllDrives=True,
+            ).execute()
+            mime = file_meta.get("mimeType", "")
+
+            if mime.startswith("application/vnd.google-apps."):
+                # C'est un fichier Google natif -> exporter en PDF
+                request = self.service.files().export_media(
+                    fileId=file_id,
+                    mimeType="application/pdf",
+                )
+            else:
+                request = self.service.files().get_media(
+                    fileId=file_id,
+                    supportsAllDrives=True,
+                )
+
+            buffer = io.BytesIO()
+            downloader = MediaIoBaseDownload(buffer, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            return buffer.getvalue()
+
+        except Exception as e:
+            logger.error(f"Erreur téléchargement fichier {file_id}: {e}")
+            return None
 
     def clear_cache(self):
         """Vide le cache des requêtes."""
