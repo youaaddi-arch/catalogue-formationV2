@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Script autonome : pour chaque apprenti, cherche son CERFA sur Google Drive,
-le télécharge, extrait la date de début d'exécution du contrat,
-et génère un fichier Excel avec les résultats.
+Script : liste TOUS les dossiers d'apprentis sur le Drive,
+entre dans chaque dossier, trouve le CERFA, le télécharge,
+extrait la date de début de contrat, génère l'Excel.
 
 Usage:
     cd ~/Desktop/catalogue-formationV2/opco-completude
@@ -15,7 +15,6 @@ import os
 import re
 import sys
 import unicodedata
-from datetime import datetime
 from pathlib import Path
 
 logging.basicConfig(
@@ -29,12 +28,8 @@ CERFAS_DIR = SCRIPT_DIR / "cerfas"
 CREDENTIALS_PATH = SCRIPT_DIR / "credentials.json"
 
 sys.path.insert(0, str(SCRIPT_DIR))
-from config import APPRENTIS
+from config import APPRENTIS, DRIVE_CIBLE_ID, DRIVE_SOURCE_ID, DOSSIERS_APPRENANTS
 
-
-# =============================================================================
-# UTILITAIRES
-# =============================================================================
 
 def normaliser(nom):
     nom = unicodedata.normalize("NFD", nom)
@@ -45,8 +40,16 @@ def normaliser(nom):
     return nom
 
 
+def mots_de(nom):
+    return {m for m in normaliser(nom).split() if len(m) > 1}
+
+
+def _escape(text):
+    return text.replace("\\", "\\\\").replace("'", "\\'")
+
+
 # =============================================================================
-# CONNEXION GOOGLE DRIVE
+# CONNEXION
 # =============================================================================
 
 def connecter_drive():
@@ -54,7 +57,7 @@ def connecter_drive():
     from googleapiclient.discovery import build
 
     if not CREDENTIALS_PATH.exists():
-        logger.error(f"credentials.json introuvable dans {SCRIPT_DIR}")
+        print(f"ERREUR: credentials.json introuvable dans {SCRIPT_DIR}")
         sys.exit(1)
 
     credentials = service_account.Credentials.from_service_account_file(
@@ -62,84 +65,37 @@ def connecter_drive():
         scopes=["https://www.googleapis.com/auth/drive.readonly"],
     )
     service = build("drive", "v3", credentials=credentials)
-    logger.info("Connexion Google Drive OK")
+    print("Connexion Google Drive OK\n")
     return service
 
 
 # =============================================================================
-# CHERCHER LES FICHIERS D'UN APPRENTI SUR LE DRIVE
+# LISTER LES DOSSIERS ET FICHIERS
 # =============================================================================
 
-def chercher_fichiers_apprenti(service, nom_apprenti):
-    """Cherche tous les fichiers d'un apprenti sur le Drive."""
-    # Prendre les 2 premiers mots significatifs du nom
-    mots = [m for m in nom_apprenti.split() if len(m) > 1]
-    if not mots:
-        return []
-
-    mots_recherche = mots[:2]
-
-    tous_fichiers = []
-    noms_vus = set()
-
-    # 1. Chercher les DOSSIERS qui contiennent le nom de l'apprenti
-    query_parts = [f"name contains '{_escape(m)}'" for m in mots_recherche]
-    query = (
-        f"mimeType = 'application/vnd.google-apps.folder' "
-        f"and {' and '.join(query_parts)} and trashed = false"
-    )
-    dossiers = _list_files(service, query)
-
-    # Lister le contenu de chaque dossier trouvé
-    for dossier in dossiers:
-        fichiers = _list_folder_files(service, dossier["id"])
-        for f in fichiers:
-            if f["name"] not in noms_vus:
-                noms_vus.add(f["name"])
-                tous_fichiers.append(f)
-
-    # 2. Chercher les FICHIERS qui contiennent le nom directement
-    query = (
-        f"mimeType != 'application/vnd.google-apps.folder' "
-        f"and {' and '.join(query_parts)} and trashed = false"
-    )
-    fichiers_directs = _list_files(service, query)
-    for f in fichiers_directs:
-        if f["name"] not in noms_vus:
-            noms_vus.add(f["name"])
-            tous_fichiers.append(f)
-
-    return tous_fichiers
+def lister_sous_dossiers(service, parent_id):
+    """Liste tous les sous-dossiers d'un dossier."""
+    q = f"'{parent_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    return _api_list(service, q)
 
 
-def trouver_cerfa(fichiers):
-    """Parmi une liste de fichiers, trouve le CERFA."""
-    mots_cles = ["cerfa", "contrat apprentissage", "contrat_apprentissage",
-                  "fa13", "fa 13", "ej20", "ej 20"]
-    for f in fichiers:
-        nom_lower = normaliser(f["name"])
-        for mot in mots_cles:
-            if mot in nom_lower:
-                return f
-    return None
+def lister_fichiers(service, parent_id):
+    """Liste tous les fichiers (non-dossiers) d'un dossier."""
+    q = f"'{parent_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false"
+    return _api_list(service, q)
 
 
-def _escape(text):
-    return text.replace("\\", "\\\\").replace("'", "\\'")
-
-
-def _list_files(service, query):
+def _api_list(service, query):
     all_files = []
     page_token = None
     try:
         while True:
             params = {
                 "q": query,
-                "pageSize": 200,
-                "fields": "nextPageToken, files(id, name, mimeType, parents, webViewLink)",
+                "pageSize": 1000,
+                "fields": "nextPageToken, files(id, name, mimeType, webViewLink)",
                 "supportsAllDrives": True,
                 "includeItemsFromAllDrives": True,
-                "corpora": "allDrives",
             }
             if page_token:
                 params["pageToken"] = page_token
@@ -149,77 +105,137 @@ def _list_files(service, query):
             if not page_token:
                 break
     except Exception as e:
-        logger.debug(f"Erreur API: {e}")
+        logger.debug(f"API: {e}")
     return all_files
 
 
-def _list_folder_files(service, folder_id):
-    q = f"'{folder_id}' in parents and trashed = false"
-    try:
-        params = {
-            "q": q,
-            "pageSize": 200,
-            "fields": "nextPageToken, files(id, name, mimeType, webViewLink)",
-            "supportsAllDrives": True,
-            "includeItemsFromAllDrives": True,
-        }
-        results = service.files().list(**params).execute()
-        return results.get("files", [])
-    except Exception:
-        return []
+# =============================================================================
+# TROUVER TOUS LES DOSSIERS D'APPRENTIS
+# =============================================================================
+
+def trouver_tous_dossiers_apprentis(service):
+    """
+    Parcourt le Drive CIBLE > Dossiers apprenants > sous-dossiers.
+    Retourne un dict {nom_dossier: {id, name, fichiers}}.
+    """
+    print("Scan du Drive CIBLE (Contrôle OPCO EP)...")
+    dossiers = {}
+
+    # Lister la racine du Drive CIBLE
+    racine = lister_sous_dossiers(service, DRIVE_CIBLE_ID)
+    print(f"  Racine: {len(racine)} dossiers")
+
+    for dossier in racine:
+        nom = dossier["name"]
+        # Chercher les dossiers "Dossiers apprenants", "PARTIE 2...", etc.
+        is_apprenants = any(
+            da.lower() in nom.lower() for da in DOSSIERS_APPRENANTS
+        ) or "apprenants" in nom.lower()
+
+        if is_apprenants:
+            print(f"  -> Scan de '{nom}'...")
+            sous_dossiers = lister_sous_dossiers(service, dossier["id"])
+            for sd in sous_dossiers:
+                dossiers[sd["name"]] = {
+                    "id": sd["id"],
+                    "name": sd["name"],
+                }
+            print(f"     {len(sous_dossiers)} dossiers d'apprentis")
+
+    print(f"\nTotal: {len(dossiers)} dossiers d'apprentis trouvés sur le Drive")
+    return dossiers
+
+
+def associer_apprenti_dossier(nom_apprenti, dossiers):
+    """Trouve le meilleur dossier pour un apprenti par fuzzy matching."""
+    mots_apprenti = mots_de(nom_apprenti)
+    if not mots_apprenti:
+        return None
+
+    meilleur = None
+    meilleur_score = 0
+
+    for nom_dossier, info in dossiers.items():
+        mots_dossier = mots_de(nom_dossier)
+        if not mots_dossier:
+            continue
+
+        # Compter les mots en commun
+        communs = mots_apprenti & mots_dossier
+        if not communs:
+            continue
+
+        # Score = proportion de mots de l'apprenti trouvés dans le dossier
+        score = len(communs) / len(mots_apprenti)
+
+        # Au moins 2 mots en commun (ou tous si nom court)
+        seuil_mots = min(2, len(mots_apprenti))
+        if len(communs) >= seuil_mots and score > meilleur_score:
+            meilleur_score = score
+            meilleur = info
+
+    return meilleur
 
 
 # =============================================================================
-# TÉLÉCHARGEMENT PDF
+# CERFA DETECTION
 # =============================================================================
 
-def telecharger_fichier(service, file_id, file_name):
+CERFA_MOTS_CLES = ["cerfa", "contrat apprentissage", "contrat_apprentissage",
+                    "fa13", "fa 13", "ej20", "ej 20"]
+
+
+def est_cerfa(nom_fichier):
+    nom_lower = normaliser(nom_fichier)
+    return any(mot in nom_lower for mot in CERFA_MOTS_CLES)
+
+
+# =============================================================================
+# TÉLÉCHARGEMENT
+# =============================================================================
+
+def telecharger(service, file_id):
     from googleapiclient.http import MediaIoBaseDownload
 
     try:
-        file_meta = service.files().get(
+        meta = service.files().get(
             fileId=file_id, fields="mimeType", supportsAllDrives=True
         ).execute()
-        mime = file_meta.get("mimeType", "")
+        mime = meta.get("mimeType", "")
 
         if mime.startswith("application/vnd.google-apps."):
-            request = service.files().export_media(
-                fileId=file_id, mimeType="application/pdf"
-            )
+            req = service.files().export_media(fileId=file_id, mimeType="application/pdf")
         else:
-            request = service.files().get_media(
-                fileId=file_id, supportsAllDrives=True
-            )
+            req = service.files().get_media(fileId=file_id, supportsAllDrives=True)
 
-        buffer = io.BytesIO()
-        downloader = MediaIoBaseDownload(buffer, request)
+        buf = io.BytesIO()
+        dl = MediaIoBaseDownload(buf, req)
         done = False
         while not done:
-            _, done = downloader.next_chunk()
-
-        return buffer.getvalue()
+            _, done = dl.next_chunk()
+        return buf.getvalue()
 
     except Exception as e:
-        logger.error(f"  Erreur téléchargement {file_name}: {e}")
+        logger.error(f"  Téléchargement échoué: {e}")
         return None
 
 
 # =============================================================================
-# EXTRACTION DATE DEPUIS PDF
+# EXTRACTION DATE
 # =============================================================================
 
 DATE_PATTERNS = [
     re.compile(
-        r"[Dd]ate\s+de\s+d[ée]but\s+d['\u2019\u0027]?\s*ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
+        r"[Dd]ate\s+de\s+d[ée]but\s+d['\u2019]?\s*ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
         r"(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
     ),
     re.compile(
-        r"[Dd]ate\s+de\s+d[ée]but\s+d['\u2019\u0027]?\s*ex[ée]cution\s+du\s*\n?\s*"
+        r"[Dd]ate\s+de\s+d[ée]but\s+d['\u2019]?\s*ex[ée]cution\s+du\s*\n?\s*"
         r"contrat\s*[:\-]?\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
         re.MULTILINE,
     ),
     re.compile(
-        r"d[ée]but\s+d['\u2019\u0027]?\s*ex[ée]cution\s+du\s*\n?\s*contrat\s*[:\-]?\s*\n?\s*"
+        r"d[ée]but\s+d['\u2019]?\s*ex[ée]cution\s+du\s*\n?\s*contrat\s*[:\-]?\s*\n?\s*"
         r"(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
         re.IGNORECASE | re.MULTILINE,
     ),
@@ -228,7 +244,7 @@ DATE_PATTERNS = [
         re.IGNORECASE | re.MULTILINE,
     ),
     re.compile(
-        r"[Dd]ate\s+d['\u2019\u0027]?\s*embauche\s*[:\-]?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
+        r"[Dd]ate\s+d['\u2019]?\s*embauche\s*[:\-]?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
     ),
     re.compile(
         r"contrat\s*[:\-]\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
@@ -237,7 +253,7 @@ DATE_PATTERNS = [
 ]
 
 
-def extraire_date_pdf(pdf_bytes):
+def extraire_date(pdf_bytes):
     import pdfplumber
 
     try:
@@ -249,7 +265,7 @@ def extraire_date_pdf(pdf_bytes):
                     texte += t + "\n"
 
             if not texte:
-                return None, "PDF vide (image scannée ?)"
+                return None, "PDF vide ou image scannée"
 
             for pattern in DATE_PATTERNS:
                 match = pattern.search(texte)
@@ -257,7 +273,6 @@ def extraire_date_pdf(pdf_bytes):
                     date = match.group(1).replace("-", "/").replace(".", "/")
                     return date, None
 
-            # Pas trouvé - retourner un extrait du texte pour debug
             return None, texte[:300]
 
     except Exception as e:
@@ -265,7 +280,7 @@ def extraire_date_pdf(pdf_bytes):
 
 
 # =============================================================================
-# SCRIPT PRINCIPAL
+# MAIN
 # =============================================================================
 
 def main():
@@ -278,81 +293,115 @@ def main():
     CERFAS_DIR.mkdir(exist_ok=True)
     service = connecter_drive()
 
+    # ÉTAPE 1 : Lister TOUS les dossiers d'apprentis sur le Drive
+    dossiers = trouver_tous_dossiers_apprentis(service)
+
+    if not dossiers:
+        print("\nERREUR: Aucun dossier d'apprenti trouvé sur le Drive !")
+        print("Vérifiez que le credentials.json a accès au Drive CIBLE.")
+        sys.exit(1)
+
+    # ÉTAPE 2 : Pour chaque apprenti, trouver son dossier et son CERFA
     resultats = []
     nb_cerfas = 0
     nb_dates = 0
-
     total = len(APPRENTIS)
 
+    print(f"\nTraitement de {total} apprentis...\n")
+
     for i, nom in enumerate(APPRENTIS):
-        print(f"\n[{i+1}/{total}] {nom}")
+        print(f"[{i+1}/{total}] {nom}")
 
-        # Chercher les fichiers de cet apprenti
-        fichiers = chercher_fichiers_apprenti(service, nom)
-        print(f"  -> {len(fichiers)} fichiers trouvés sur le Drive")
+        # Trouver le dossier de cet apprenti
+        dossier = associer_apprenti_dossier(nom, dossiers)
+        if not dossier:
+            print(f"  -> Pas de dossier trouvé")
+            resultats.append({
+                "Nom": nom,
+                "Date début contrat (CERFA)": "",
+                "Fichier CERFA": "",
+                "Dossier Drive": "Non trouvé",
+            })
+            continue
 
-        # Trouver le CERFA parmi les fichiers
-        cerfa = trouver_cerfa(fichiers)
+        print(f"  -> Dossier: {dossier['name']}")
+
+        # Lister les fichiers du dossier
+        fichiers = lister_fichiers(service, dossier["id"])
+        print(f"  -> {len(fichiers)} fichiers")
+
+        # Trouver le CERFA
+        cerfa = None
+        for f in fichiers:
+            if est_cerfa(f["name"]):
+                cerfa = f
+                break
 
         if not cerfa:
-            print(f"  -> PAS DE CERFA trouvé")
+            # Chercher aussi dans les sous-dossiers
+            sous_dossiers = lister_sous_dossiers(service, dossier["id"])
+            for sd in sous_dossiers:
+                fichiers_sd = lister_fichiers(service, sd["id"])
+                for f in fichiers_sd:
+                    if est_cerfa(f["name"]):
+                        cerfa = f
+                        break
+                if cerfa:
+                    break
+
+        if not cerfa:
+            print(f"  -> PAS DE CERFA")
+            noms_fichiers = [f["name"] for f in fichiers[:5]]
             resultats.append({
                 "Nom": nom,
                 "Date début contrat (CERFA)": "",
                 "Fichier CERFA": "Non trouvé",
-                "Remarque": f"{len(fichiers)} fichiers mais aucun CERFA",
+                "Dossier Drive": dossier["name"],
             })
             continue
 
         nb_cerfas += 1
-        print(f"  -> CERFA trouvé: {cerfa['name']}")
+        print(f"  -> CERFA: {cerfa['name']}")
 
-        # Télécharger le CERFA
-        pdf_bytes = telecharger_fichier(service, cerfa["id"], cerfa["name"])
+        # Télécharger
+        pdf_bytes = telecharger(service, cerfa["id"])
         if not pdf_bytes:
-            print(f"  -> ERREUR téléchargement")
             resultats.append({
                 "Nom": nom,
                 "Date début contrat (CERFA)": "",
                 "Fichier CERFA": cerfa["name"],
-                "Remarque": "Erreur téléchargement",
+                "Dossier Drive": dossier["name"],
             })
             continue
 
-        # Sauvegarder le PDF
-        safe_name = re.sub(r'[^\w\s\-.]', '_', f"{nom} - {cerfa['name']}")
-        dest = CERFAS_DIR / safe_name
-        dest.write_bytes(pdf_bytes)
+        # Sauvegarder
+        safe = re.sub(r'[^\w\s\-.]', '_', f"{nom} - {cerfa['name']}")
+        (CERFAS_DIR / safe).write_bytes(pdf_bytes)
 
         # Extraire la date
-        date, erreur = extraire_date_pdf(pdf_bytes)
+        date, erreur = extraire_date(pdf_bytes)
         if date:
             nb_dates += 1
-            print(f"  -> DATE DÉBUT CONTRAT: {date}")
-            resultats.append({
-                "Nom": nom,
-                "Date début contrat (CERFA)": date,
-                "Fichier CERFA": cerfa["name"],
-                "Remarque": "",
-            })
+            print(f"  -> DATE: {date}")
         else:
-            print(f"  -> Date non trouvée dans le PDF")
+            print(f"  -> Date non trouvée")
             if erreur:
-                print(f"     Extrait texte: {erreur[:150]}")
-            resultats.append({
-                "Nom": nom,
-                "Date début contrat (CERFA)": "",
-                "Fichier CERFA": cerfa["name"],
-                "Remarque": f"Date non trouvée. Texte: {(erreur or '')[:100]}",
-            })
+                print(f"     Texte: {erreur[:120]}")
 
-    # Générer l'Excel
+        resultats.append({
+            "Nom": nom,
+            "Date début contrat (CERFA)": date or "",
+            "Fichier CERFA": cerfa["name"],
+            "Dossier Drive": dossier["name"],
+        })
+
+    # ÉTAPE 3 : Générer l'Excel
     import pandas as pd
 
     df = pd.DataFrame(resultats)
+    output = SCRIPT_DIR / "dates_debut_contrat_cerfas.xlsx"
 
-    output_path = SCRIPT_DIR / "dates_debut_contrat_cerfas.xlsx"
-    with pd.ExcelWriter(str(output_path), engine="openpyxl") as writer:
+    with pd.ExcelWriter(str(output), engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Dates contrats CERFA")
         ws = writer.sheets["Dates contrats CERFA"]
         for col_idx, col in enumerate(df.columns, 1):
@@ -363,13 +412,12 @@ def main():
 
     print()
     print("=" * 60)
-    print(f"  RÉSULTAT:")
-    print(f"  - {total} apprentis")
-    print(f"  - {nb_cerfas} CERFAs trouvés")
-    print(f"  - {nb_dates} dates extraites")
+    print(f"  {total} apprentis")
+    print(f"  {nb_cerfas} CERFAs trouvés")
+    print(f"  {nb_dates} dates extraites")
     print()
-    print(f"  Fichier Excel: {output_path}")
-    print(f"  Dossier CERFAs: {CERFAS_DIR}")
+    print(f"  Excel: {output}")
+    print(f"  CERFAs: {CERFAS_DIR}")
     print("=" * 60)
     print()
 
