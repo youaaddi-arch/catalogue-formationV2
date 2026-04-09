@@ -16,7 +16,7 @@ import unicodedata
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload  # gardé pour fichiers locaux
 
 # ── Configuration ──────────────────────────────────────────────────────
 
@@ -250,53 +250,37 @@ def chercher_par_nom(service, nom_apprenti):
     return tous
 
 
-def telecharger_fichier(service, file_id):
-    """Télécharge le contenu d'un fichier Drive. Exporte les Google Docs en PDF."""
-    from googleapiclient.http import MediaIoBaseDownload
-
-    meta = service.files().get(
-        fileId=file_id, fields="mimeType, name",
-        supportsAllDrives=True,
-    ).execute()
-    mime = meta.get("mimeType", "")
-
-    export_map = {
-        "application/vnd.google-apps.document": "application/pdf",
-        "application/vnd.google-apps.spreadsheet": "application/pdf",
-        "application/vnd.google-apps.presentation": "application/pdf",
-        "application/vnd.google-apps.drawing": "application/pdf",
+def creer_raccourci(service, file_id, nom_fichier, parent_id):
+    """Crée un raccourci (shortcut) vers un fichier dans le dossier cible."""
+    meta = {
+        "name": nom_fichier,
+        "mimeType": "application/vnd.google-apps.shortcut",
+        "shortcutDetails": {"targetId": file_id},
+        "parents": [parent_id],
     }
-
-    buf = io.BytesIO()
-    if mime in export_map:
-        req = service.files().export_media(fileId=file_id, mimeType=export_map[mime])
-    else:
-        req = service.files().get_media(fileId=file_id, supportsAllDrives=True)
-
-    dl = MediaIoBaseDownload(buf, req)
-    done = False
-    while not done:
-        _, done = dl.next_chunk()
-    return buf.getvalue(), mime
-
-
-def upload_vers_drive(service, contenu, nom, mime_type, parent_id):
-    """Upload un fichier dans un dossier du Drive partagé."""
-    media = MediaIoBaseUpload(
-        io.BytesIO(contenu), mimetype=mime_type, resumable=True,
-    )
-    meta = {"name": nom, "parents": [parent_id]}
     return service.files().create(
-        body=meta, media_body=media,
+        body=meta,
         fields="id, name, webViewLink",
         supportsAllDrives=True,
     ).execute()
 
 
+def deplacer_fichier(service, file_id, parent_id):
+    """Ajoute un dossier parent à un fichier (le fait apparaitre dans le dossier)."""
+    return service.files().update(
+        fileId=file_id,
+        addParents=parent_id,
+        fields="id, name, parents",
+        supportsAllDrives=True,
+    ).execute()
+
+
 def copier_vers_dossier(service, file_id, nom_fichier, parent_id):
-    """Télécharge un fichier Drive puis le re-upload dans le dossier cible."""
-    contenu, mime = telecharger_fichier(service, file_id)
-    return upload_vers_drive(service, contenu, nom_fichier, mime, parent_id)
+    """Place un fichier dans le dossier cible. Essaie addParents puis shortcut."""
+    try:
+        return deplacer_fichier(service, file_id, parent_id)
+    except HttpError:
+        return creer_raccourci(service, file_id, nom_fichier, parent_id)
 
 
 # ── Script principal ───────────────────────────────────────────────────
