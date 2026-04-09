@@ -620,10 +620,20 @@ def dispatcher_pieces():
         if not pieces_trouvees:
             continue
 
-        # Trouver ou créer le dossier de l'apprenti dans le Drive CIBLE
-        dossier = scanner.trouver_ou_creer_dossier_apprenti(
-            apprenti.nom, config.DRIVE_CIBLE_ID
-        )
+        # Utiliser le dossier déjà identifié par le scan si c'est un
+        # dossier du Drive CIBLE, sinon chercher/créer
+        dossier = None
+        if (apprenti.dossier_id and apprenti.dossier_source == "cible"
+                and not os.path.isdir(apprenti.dossier_id)):
+            dossier = {
+                "id": apprenti.dossier_id,
+                "name": apprenti.dossier_nom or apprenti.nom,
+            }
+        else:
+            dossier = scanner.trouver_ou_creer_dossier_apprenti(
+                apprenti.nom, config.DRIVE_CIBLE_ID
+            )
+
         if not dossier:
             for p in pieces_trouvees:
                 resultats.append({
