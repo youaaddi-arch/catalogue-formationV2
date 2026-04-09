@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}{{ apprenti.nom }} - OPCO EP Complétude{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active">{{ apprenti.nom }}</li>
+    </ol>
+</nav>
+
+<!-- En-tête apprenti -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h3>
+                    <i class="bi bi-person-circle"></i> {{ apprenti.nom }}
+                </h3>
+                {% if apprenti.dossier_nom %}
+                <p class="mb-1">
+                    <i class="bi bi-folder"></i> Dossier Drive : <strong>{{ apprenti.dossier_nom }}</strong>
+                    <span class="badge bg-info">{{ apprenti.dossier_source|upper }}</span>
+                </p>
+                {% else %}
+                <p class="mb-1 text-danger">
+                    <i class="bi bi-folder-x"></i> Aucun dossier Drive trouvé
+                </p>
+                {% endif %}
+
+                {% if apprenti.classe %}
+                <p class="mb-1">
+                    <i class="bi bi-mortarboard"></i> Classe : <strong>{{ apprenti.classe }}</strong>
+                </p>
+                {% endif %}
+                {% if apprenti.date_embauche %}
+                <p class="mb-1">
+                    <i class="bi bi-briefcase"></i> Date d'embauche : <span class="badge bg-success">{{ apprenti.date_embauche }}</span>
+                </p>
+                {% endif %}
+                {% if apprenti.jour_cours %}
+                <p class="mb-1">
+                    <i class="bi bi-calendar-week"></i> Jour de cours : <span class="badge bg-primary">{{ apprenti.jour_cours }}</span>
+                </p>
+                {% endif %}
+                {% if apprenti.date_debut_formation or apprenti.date_fin_formation %}
+                <p class="mb-1">
+                    <i class="bi bi-calendar-range"></i> Formation :
+                    {{ apprenti.date_debut_formation or '?' }} → {{ apprenti.date_fin_formation or '?' }}
+                </p>
+                {% endif %}
+
+                {% if apprenti.donnees_excel %}
+                <p class="mb-1">
+                    <i class="bi bi-hash"></i> Dossier n° : {{ apprenti.donnees_excel.numero_dossier or 'N/A' }}
+                </p>
+                <p class="mb-0">
+                    <i class="bi bi-tag"></i> Statut :
+                    <span class="badge bg-secondary">{{ apprenti.donnees_excel.statut_dossier or 'N/A' }}</span>
+                </p>
+                {% endif %}
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="d-inline-block text-center">
+                    <div class="score-circle {% if apprenti.score_completude == 100 %}score-complete{% elif apprenti.score_completude >= 70 %}score-good{% elif apprenti.score_completude >= 40 %}score-warning{% else %}score-danger{% endif %}">
+                        <span class="score-value">{{ apprenti.score_completude }}%</span>
+                    </div>
+                    <div class="mt-2">
+                        <strong>{{ apprenti.nb_pieces_trouvees }}/{{ apprenti.nb_pieces_attendues }}</strong> pièces
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Pièces justificatives -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-check"></i> Pièces justificatives
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Pièce</th>
+                            <th>Statut</th>
+                            <th>Fichier trouvé</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for piece in apprenti.pieces %}
+                        <tr class="{% if piece.statut == 'trouvee' %}table-success{% elif piece.statut == 'manquante' %}table-danger{% elif piece.statut == 'non_applicable' %}table-light{% endif %}">
+                            <td>
+                                <strong>{{ piece.nom }}</strong>
+                            </td>
+                            <td>
+                                {% if piece.statut == 'trouvee' %}
+                                <span class="badge bg-success"><i class="bi bi-check-lg"></i> Trouvée</span>
+                                {% elif piece.statut == 'manquante' %}
+                                <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Manquante</span>
+                                {% elif piece.statut == 'incertaine' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-question-lg"></i> Incertaine</span>
+                                {% elif piece.statut == 'non_applicable' %}
+                                <span class="badge bg-secondary">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if piece.fichier_nom %}
+                                {% if piece.fichier_lien %}
+                                <a href="{{ piece.fichier_lien }}" target="_blank" class="text-decoration-none">
+                                    <i class="bi bi-box-arrow-up-right"></i> {{ piece.fichier_nom }}
+                                </a>
+                                {% else %}
+                                {{ piece.fichier_nom }}
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if piece.source %}
+                                <span class="badge bg-info">{{ piece.source|upper }}</span>
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations Excel et constats -->
+    <div class="col-md-4">
+        {% if apprenti.donnees_excel %}
+        <!-- Métadonnées -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Informations dossier
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Date d'embauche (CERFA)</span>
+                    <span class="badge {% if apprenti.date_embauche %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ apprenti.date_embauche or 'N/A' }}
+                    </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>CSF</span>
+                    <span class="badge {% if apprenti.donnees_excel.csf and apprenti.donnees_excel.csf.lower() == 'oui' %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ apprenti.donnees_excel.csf or 'N/A' }}
+                    </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Factures assignation</span>
+                    <span class="badge bg-secondary">{{ apprenti.donnees_excel.factures_assignation or 'N/A' }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Contrôle Urssaf</span>
+                    <span class="badge {% if apprenti.donnees_excel.controle_urssaf == 'OK' %}bg-success{% elif apprenti.donnees_excel.controle_urssaf == 'KO' %}bg-danger{% else %}bg-secondary{% endif %}">
+                        {{ apprenti.donnees_excel.controle_urssaf or 'N/A' }}
+                    </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Rupture</span>
+                    <span class="badge {% if apprenti.donnees_excel.rupture and apprenti.donnees_excel.rupture.lower() == 'oui' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                        {{ apprenti.donnees_excel.rupture or 'Non' }}
+                        {% if apprenti.donnees_excel.date_rupture %}
+                        ({{ apprenti.donnees_excel.date_rupture }})
+                        {% endif %}
+                    </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>Maintien</span>
+                    <span class="badge bg-secondary">
+                        {{ apprenti.donnees_excel.maintien or 'N/A' }}
+                        {% if apprenti.donnees_excel.date_fin_maintien %}
+                        ({{ apprenti.donnees_excel.date_fin_maintien }})
+                        {% endif %}
+                    </span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Constats -->
+        {% if apprenti.donnees_excel.constats %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-chat-left-text"></i> Constats du contrôleur
+            </div>
+            <div class="card-body">
+                {% for constat in apprenti.donnees_excel.constats %}
+                <div class="mb-2 p-2 bg-light rounded">
+                    <small class="text-muted">Constat {{ loop.index }}</small>
+                    <p class="mb-0 small">{{ constat }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions CFA -->
+        {% if apprenti.donnees_excel.actions_cfa %}
+        <div class="card mb-4 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-exclamation-triangle"></i> Actions CFA à transmettre
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ apprenti.donnees_excel.actions_cfa }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="card mb-4">
+            <div class="card-body text-center text-muted">
+                <i class="bi bi-file-earmark-x display-4"></i>
+                <p class="mt-2">Aucune donnée Excel trouvée pour cet apprenti</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="d-flex justify-content-between mt-3 mb-5">
+    {% if index > 0 %}
+    <a href="/apprenti/{{ index - 1 }}" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left"></i> Précédent
+    </a>
+    {% else %}
+    <span></span>
+    {% endif %}
+
+    <a href="/" class="btn btn-secondary">
+        <i class="bi bi-grid"></i> Retour au dashboard
+    </a>
+
+    {% if index < total - 1 %}
+    <a href="/apprenti/{{ index + 1 }}" class="btn btn-outline-primary">
+        Suivant <i class="bi bi-arrow-right"></i>
+    </a>
+    {% else %}
+    <span></span>
+    {% endif %}
+</div>
+{% endblock %}

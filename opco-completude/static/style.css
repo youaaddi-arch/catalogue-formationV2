@@ -1,0 +1,129 @@
+/* OPCO EP Complétude - Styles */
+
+body {
+    font-size: 0.9rem;
+    background-color: #f5f7fa;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+/* Stat cards */
+.stat-card {
+    border-radius: 10px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.stat-card small {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+/* Table */
+#table-apprentis {
+    font-size: 0.85rem;
+}
+
+#table-apprentis th {
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
+.piece-cell {
+    min-width: 40px;
+}
+
+.sticky-top {
+    z-index: 10;
+}
+
+/* Score circle (detail page) */
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 6px solid;
+    margin: 0 auto;
+}
+
+.score-complete {
+    border-color: #198754;
+    background-color: #d1e7dd;
+}
+
+.score-good {
+    border-color: #0dcaf0;
+    background-color: #cff4fc;
+}
+
+.score-warning {
+    border-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+.score-danger {
+    border-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.score-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+/* Progress bars */
+.progress {
+    border-radius: 10px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+
+    #table-apprentis {
+        font-size: 0.75rem;
+    }
+}
+
+/* Filter card */
+.card .input-group-text {
+    background-color: transparent;
+    border-right: none;
+}
+
+.card .input-group .form-control {
+    border-left: none;
+}
+
+/* Hover effect on table rows */
+#table-apprentis tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+}
+
+/* Truncated text */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
