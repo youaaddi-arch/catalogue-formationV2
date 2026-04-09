@@ -169,6 +169,7 @@
                 <th>#</th>
                 <th>Apprenti</th>
                 <th>Classe</th>
+                <th>Date d'embauche</th>
                 <th>Jour</th>
                 <th>N° Dossier</th>
                 <th>Statut dossier</th>
@@ -207,6 +208,7 @@
                     {% endif %}
                 </td>
                 <td><small>{{ apprenti.classe or '-' }}</small></td>
+                <td><small>{{ apprenti.date_embauche or '-' }}</small></td>
                 <td>{{ apprenti.jour_cours or '-' }}</td>
                 <td>{{ apprenti.donnees_excel.numero_dossier if apprenti.donnees_excel and apprenti.donnees_excel.numero_dossier else '-' }}</td>
                 <td>

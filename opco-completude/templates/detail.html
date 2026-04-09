@@ -35,6 +35,11 @@
                     <i class="bi bi-mortarboard"></i> Classe : <strong>{{ apprenti.classe }}</strong>
                 </p>
                 {% endif %}
+                {% if apprenti.date_embauche %}
+                <p class="mb-1">
+                    <i class="bi bi-briefcase"></i> Date d'embauche : <span class="badge bg-success">{{ apprenti.date_embauche }}</span>
+                </p>
+                {% endif %}
                 {% if apprenti.jour_cours %}
                 <p class="mb-1">
                     <i class="bi bi-calendar-week"></i> Jour de cours : <span class="badge bg-primary">{{ apprenti.jour_cours }}</span>
@@ -231,7 +236,7 @@
         <i class="bi bi-grid"></i> Retour au dashboard
     </a>
 
-    {% if index < 93 %}
+    {% if index < total - 1 %}
     <a href="/apprenti/{{ index + 1 }}" class="btn btn-outline-primary">
         Suivant <i class="bi bi-arrow-right"></i>
     </a>

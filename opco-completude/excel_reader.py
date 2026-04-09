@@ -36,6 +36,18 @@ COLUMN_MAPPINGS = {
     "date_fin_maintien": [
         "date fin maintien", "date de fin de maintien", "fin maintien",
     ],
+    "date_embauche": [
+        "date d'embauche", "date embauche", "date début contrat",
+        "date debut contrat", "début contrat", "debut contrat",
+        "date contrat", "embauche",
+    ],
+    "date_debut_formation": [
+        "date début formation", "date debut formation", "début formation",
+        "debut formation",
+    ],
+    "date_fin_formation": [
+        "date fin formation", "date de fin de formation", "fin formation",
+    ],
     "actions_cfa": [
         "actions cfa", "actions cfa à transmettre", "action cfa",
         "actions à transmettre", "a transmettre",
@@ -146,6 +158,15 @@ def lire_excel(path: str = None) -> dict:
             donnees.maintien = _safe_str(row, col_map.get("maintien"))
             donnees.date_fin_maintien = _safe_str(
                 row, col_map.get("date_fin_maintien")
+            )
+            donnees.date_embauche = _safe_str(
+                row, col_map.get("date_embauche")
+            )
+            donnees.date_debut_formation = _safe_str(
+                row, col_map.get("date_debut_formation")
+            )
+            donnees.date_fin_formation = _safe_str(
+                row, col_map.get("date_fin_formation")
             )
             donnees.actions_cfa = _safe_str(row, col_map.get("actions_cfa"))
 

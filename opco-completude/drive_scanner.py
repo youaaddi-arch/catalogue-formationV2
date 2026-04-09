@@ -1,6 +1,7 @@
 """Module de scan Google Drive pour l'application OPCO EP."""
 
 import logging
+import re
 from typing import Optional
 
 from google.oauth2 import service_account
@@ -13,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
+# Patterns de noms de classes connus
+CLASSE_PATTERNS = re.compile(
+    r'\b(NTC\s*\d+|CC\s*\d+|REM\s*\d+|DP\s*\d*|TP\s+\w+|BTS\s+\w+|'
+    r'AIS\s*\d*|DWWM\s*\d*|CDA\s*\d*|TSSR\s*\d*|SIO\s*\d*|BACHELOR\s*\w*)',
+    re.IGNORECASE
+)
+
 
 class DriveScanner:
     """Scanner pour les Google Drives OPCO EP."""
@@ -20,7 +28,7 @@ class DriveScanner:
     def __init__(self, credentials_path: str = None):
         self.credentials_path = credentials_path or config.CREDENTIALS_PATH
         self.service = None
-        self._cache = {}  # Cache des résultats de requêtes
+        self._cache = {}
 
     def connect(self):
         """Établit la connexion au Google Drive API."""
@@ -37,7 +45,10 @@ class DriveScanner:
 
     def _list_files(self, query: str, drive_id: str = None,
                     page_size: int = 1000) -> list:
-        """Liste les fichiers selon une requête Drive API."""
+        """Liste les fichiers selon une requête Drive API.
+
+        Essaie d'abord avec corpora=allDrives, puis sans corpora en fallback.
+        """
         cache_key = f"{query}|{drive_id}"
         if cache_key in self._cache:
             return self._cache[cache_key]
@@ -73,32 +84,83 @@ class DriveScanner:
             logger.error(f"Erreur API Drive: {e}")
             return []
 
+    def _list_folder_contents(self, folder_id: str,
+                               folders_only: bool = False) -> list:
+        """Liste le contenu d'un dossier spécifique.
+
+        Méthode dédiée pour lister le contenu d'un dossier connu par son ID.
+        Essaie plusieurs stratégies car 'in parents' avec corpora=allDrives
+        ne fonctionne pas toujours sur les Drives partagés.
+        """
+        cache_key = f"folder_contents|{folder_id}|{folders_only}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        mime_filter = (
+            "mimeType = 'application/vnd.google-apps.folder'"
+            if folders_only
+            else "mimeType != 'application/vnd.google-apps.folder'"
+        )
+        q = f"'{folder_id}' in parents and {mime_filter} and trashed = false"
+
+        # Stratégie 1: sans corpora (fonctionne pour les fichiers accessibles)
+        try:
+            params = {
+                "q": q,
+                "pageSize": 1000,
+                "fields": "nextPageToken, files(id, name, mimeType, parents, webViewLink)",
+                "supportsAllDrives": True,
+                "includeItemsFromAllDrives": True,
+            }
+            all_files = []
+            page_token = None
+            while True:
+                if page_token:
+                    params["pageToken"] = page_token
+                results = self.service.files().list(**params).execute()
+                all_files.extend(results.get("files", []))
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
+            if all_files:
+                self._cache[cache_key] = all_files
+                return all_files
+        except HttpError as e:
+            logger.debug(f"Stratégie 1 échouée pour {folder_id}: {e}")
+
+        # Stratégie 2: avec corpora=allDrives
+        try:
+            params["corpora"] = "allDrives"
+            params.pop("pageToken", None)
+            all_files = []
+            page_token = None
+            while True:
+                if page_token:
+                    params["pageToken"] = page_token
+                results = self.service.files().list(**params).execute()
+                all_files.extend(results.get("files", []))
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
+            self._cache[cache_key] = all_files
+            return all_files
+        except HttpError as e:
+            logger.debug(f"Stratégie 2 échouée pour {folder_id}: {e}")
+
+        self._cache[cache_key] = []
+        return []
+
     def lister_dossiers_racine(self, drive_id: str) -> list:
         """Liste les dossiers à la racine d'un Drive partagé."""
-        query = (
-            f"'{drive_id}' in parents "
-            f"and mimeType = 'application/vnd.google-apps.folder' "
-            f"and trashed = false"
-        )
-        return self._list_files(query, drive_id)
+        return self._list_folder_contents(drive_id, folders_only=True)
 
     def lister_sous_dossiers(self, parent_id: str, drive_id: str = None) -> list:
         """Liste les sous-dossiers d'un dossier."""
-        query = (
-            f"'{parent_id}' in parents "
-            f"and mimeType = 'application/vnd.google-apps.folder' "
-            f"and trashed = false"
-        )
-        return self._list_files(query, drive_id)
+        return self._list_folder_contents(parent_id, folders_only=True)
 
     def lister_fichiers(self, parent_id: str, drive_id: str = None) -> list:
         """Liste les fichiers (non-dossiers) d'un dossier."""
-        query = (
-            f"'{parent_id}' in parents "
-            f"and mimeType != 'application/vnd.google-apps.folder' "
-            f"and trashed = false"
-        )
-        return self._list_files(query, drive_id)
+        return self._list_folder_contents(parent_id, folders_only=False)
 
     def lister_tout_contenu_recursif(self, parent_id: str,
                                       drive_id: str = None,
@@ -107,13 +169,13 @@ class DriveScanner:
         if profondeur_max <= 0:
             return []
 
-        fichiers = self.lister_fichiers(parent_id, drive_id)
-        sous_dossiers = self.lister_sous_dossiers(parent_id, drive_id)
+        fichiers = self.lister_fichiers(parent_id)
+        sous_dossiers = self.lister_sous_dossiers(parent_id)
 
         for sd in sous_dossiers:
             fichiers.extend(
                 self.lister_tout_contenu_recursif(
-                    sd["id"], drive_id, profondeur_max - 1
+                    sd["id"], None, profondeur_max - 1
                 )
             )
         return fichiers
@@ -190,31 +252,23 @@ class DriveScanner:
         fichiers_planning = []
 
         try:
-            drive_id = config.DRIVE_SOURCE_ID
-
-            # Méthode 1 : Recherche directe par nom d'apprenti
+            # Recherche directe par nom d'apprenti
             logger.info("Drive SOURCE: recherche directe des dossiers d'apprentis...")
             for nom in config.APPRENTIS:
-                # Extraire les mots du nom (au moins 2 caractères)
                 mots = [m for m in nom.split() if len(m) > 1]
                 if not mots:
                     continue
 
-                # Chercher un dossier dont le nom contient les mots du nom
-                # Utiliser les 2 premiers mots significatifs pour la recherche
                 mots_recherche = mots[:2]
-                query_parts = []
-                for mot in mots_recherche:
-                    mot_escaped = self._escape_query(mot)
-                    query_parts.append(f"name contains '{mot_escaped}'")
-
+                query_parts = [
+                    f"name contains '{self._escape_query(mot)}'"
+                    for mot in mots_recherche
+                ]
                 query = (
                     f"mimeType = 'application/vnd.google-apps.folder' "
                     f"and {' and '.join(query_parts)} "
                     f"and trashed = false"
                 )
-
-                # Chercher dans TOUS les drives (pas un drive spécifique)
                 results = self._list_files(query)
 
                 if results:
@@ -227,24 +281,24 @@ class DriveScanner:
                             "webViewLink": r.get("webViewLink", ""),
                         }
                     logger.info(
-                        f"  {nom} -> trouvé {len(results)} dossier(s): "
+                        f"  {nom} -> {len(results)} dossier(s): "
                         f"{results[0]['name']}"
                     )
 
-            # Méthode 2 : Chercher aussi les plannings
+            # Chercher les plannings/calendriers
             logger.info("Drive SOURCE: recherche des plannings...")
-            query = (
-                f"name contains 'planning' "
-                f"and mimeType != 'application/vnd.google-apps.folder' "
-                f"and trashed = false"
-            )
-            planning_results = self._list_files(query)
-            for f in planning_results:
-                fichiers_planning.append(f)
+            for mot_cle in ["planning", "calendrier"]:
+                query = (
+                    f"name contains '{mot_cle}' "
+                    f"and mimeType != 'application/vnd.google-apps.folder' "
+                    f"and trashed = false"
+                )
+                results = self._list_files(query)
+                for f in results:
+                    if f["name"] not in {p["name"] for p in fichiers_planning}:
+                        fichiers_planning.append(f)
 
-            logger.info(
-                f"Trouvé {len(fichiers_planning)} fichiers planning"
-            )
+            logger.info(f"Trouvé {len(fichiers_planning)} fichiers planning")
 
         except Exception as e:
             logger.error(f"Erreur scan Drive SOURCE: {e}", exc_info=True)
@@ -254,29 +308,97 @@ class DriveScanner:
         )
         return dossiers, fichiers_planning
 
+    def extraire_classe_depuis_planning(self, nom_planning: str) -> str:
+        """Extrait le nom de la classe depuis un nom de fichier planning.
+
+        Ex: 'PLANNING CC5.pdf' -> 'CC5'
+            'PLANNING NTC 3 2026 à 2027 MONTPELLIER.pdf' -> 'NTC 3'
+            'PLANNING 2025 2026 NTC1 MONTPELLIER.pdf' -> 'NTC1'
+        """
+        match = CLASSE_PATTERNS.search(nom_planning)
+        return match.group(1).strip() if match else ""
+
     def chercher_fichiers_par_nom(self, nom_apprenti: str) -> list:
         """
-        Cherche tous les fichiers (non-dossiers) dont le nom contient
-        des mots du nom de l'apprenti, dans tous les Drives.
+        Cherche les fichiers d'un apprenti dans le Drive.
+
+        Stratégie combinée:
+        1. Chercher les DOSSIERS par nom d'apprenti
+        2. Pour chaque dossier trouvé, lister son contenu récursivement
+        3. Chercher aussi les FICHIERS directement nommés avec le nom
         """
         mots = [m for m in nom_apprenti.split() if len(m) > 1]
         if not mots:
             return []
 
-        # Chercher avec les 2 premiers mots significatifs
         mots_recherche = mots[:2]
-        query_parts = []
-        for mot in mots_recherche:
-            mot_escaped = self._escape_query(mot)
-            query_parts.append(f"name contains '{mot_escaped}'")
+        query_parts = [
+            f"name contains '{self._escape_query(mot)}'"
+            for mot in mots_recherche
+        ]
+        conditions = " and ".join(query_parts)
 
-        query = (
-            f"mimeType != 'application/vnd.google-apps.folder' "
-            f"and {' and '.join(query_parts)} "
-            f"and trashed = false"
+        tous_fichiers = []
+        noms_vus = set()
+
+        # 1. Chercher les dossiers par nom et lister leur contenu
+        query_dossiers = (
+            f"mimeType = 'application/vnd.google-apps.folder' "
+            f"and {conditions} and trashed = false"
         )
+        dossiers = self._list_files(query_dossiers)
 
-        return self._list_files(query)
+        for dossier in dossiers:
+            fichiers = self.lister_tout_contenu_recursif(
+                dossier["id"], profondeur_max=3
+            )
+            for f in fichiers:
+                if f["name"] not in noms_vus:
+                    noms_vus.add(f["name"])
+                    tous_fichiers.append(f)
+
+        # 2. Chercher aussi les fichiers nommés directement avec le nom
+        query_fichiers = (
+            f"mimeType != 'application/vnd.google-apps.folder' "
+            f"and {conditions} and trashed = false"
+        )
+        fichiers_directs = self._list_files(query_fichiers)
+        for f in fichiers_directs:
+            if f["name"] not in noms_vus:
+                noms_vus.add(f["name"])
+                tous_fichiers.append(f)
+
+        return tous_fichiers
+
+    def trouver_classe_apprenti(self, nom_apprenti: str) -> str:
+        """Trouve la classe d'un apprenti en regardant le dossier parent."""
+        mots = [m for m in nom_apprenti.split() if len(m) > 1]
+        if not mots:
+            return ""
+
+        mots_recherche = mots[:2]
+        query_parts = [
+            f"name contains '{self._escape_query(mot)}'"
+            for mot in mots_recherche
+        ]
+        query = (
+            f"mimeType = 'application/vnd.google-apps.folder' "
+            f"and {' and '.join(query_parts)} and trashed = false"
+        )
+        dossiers = self._list_files(query)
+
+        for d in dossiers:
+            parents = d.get("parents", [])
+            if not parents:
+                continue
+            parent_name = self.obtenir_nom_parent(d)
+            if not parent_name:
+                continue
+            # Vérifier si le parent ressemble à un nom de classe
+            if CLASSE_PATTERNS.search(parent_name):
+                return parent_name
+
+        return ""
 
     def obtenir_nom_parent(self, file_or_folder: dict) -> str:
         """

@@ -171,45 +171,12 @@ def effectuer_scan():
                 apprenti.dossier_nom = match_source["nom_match"]
                 apprenti.dossier_source = "source"
 
-            # Récupérer le nom de la classe (dossier parent de l'apprenti)
-            if drive_ok and match_source:
-                try:
-                    # Chercher tous les dossiers qui matchent cet apprenti
-                    mots = [m for m in nom_apprenti.split() if len(m) > 1]
-                    if mots:
-                        qp = []
-                        for mot in mots[:2]:
-                            qp.append(
-                                f"name contains '{scanner._escape_query(mot)}'"
-                            )
-                        query_classe = (
-                            f"mimeType = 'application/vnd.google-apps.folder' "
-                            f"and {' and '.join(qp)} "
-                            f"and trashed = false"
-                        )
-                        dossiers_apprenti = scanner._list_files(query_classe)
-                        # Pour chaque dossier, récupérer le parent
-                        for d in dossiers_apprenti:
-                            parents = d.get("parents", [])
-                            if parents:
-                                parent = scanner.service.files().get(
-                                    fileId=parents[0],
-                                    fields="name",
-                                    supportsAllDrives=True,
-                                ).execute()
-                                pname = parent.get("name", "")
-                                # Vérifier si ça ressemble à une classe
-                                pname_up = pname.upper()
-                                if any(kw in pname_up for kw in [
-                                    "NTC", "CC", "REM", "DP", "TP",
-                                    "BTS", "AIS", "DWWM", "CDA",
-                                    "TSSR", "SIO", "BACHELOR",
-                                ]):
-                                    apprenti.classe = pname
-                                    logger.info(f"  Classe: {pname}")
-                                    break
-                except Exception as e:
-                    logger.debug(f"  Erreur classe: {e}")
+            # Récupérer le nom de la classe
+            if drive_ok:
+                classe = scanner.trouver_classe_apprenti(nom_apprenti)
+                if classe:
+                    apprenti.classe = classe
+                    logger.info(f"  Classe: {classe}")
 
             # Chercher les fichiers par NOM dans tout le Drive
             # (car le listing par parent ne fonctionne pas)
@@ -222,9 +189,31 @@ def effectuer_scan():
                     )
 
             # Ajouter les plannings de classes
+            # Si la classe est connue, chercher le planning correspondant
             for pf in fichiers_planning_classes:
                 if pf["name"] not in {f["name"] for f in fichiers_dossier}:
-                    fichiers_dossier.append(pf)
+                    if apprenti.classe:
+                        # Vérifier si le planning correspond à la classe
+                        classe_planning = scanner.extraire_classe_depuis_planning(
+                            pf["name"]
+                        ) if drive_ok else ""
+                        classe_norm = apprenti.classe.upper().replace(" ", "")
+                        planning_norm = classe_planning.upper().replace(" ", "")
+                        if planning_norm and planning_norm in classe_norm or classe_norm in planning_norm:
+                            fichiers_dossier.append(pf)
+                    else:
+                        # Pas de classe connue: ajouter tous les plannings
+                        # (la détection de pièce fera le tri)
+                        fichiers_dossier.append(pf)
+            # Si pas de classe trouvée via le Drive, essayer depuis les plannings
+            if not apprenti.classe and drive_ok:
+                for pf in fichiers_planning_classes:
+                    classe_p = scanner.extraire_classe_depuis_planning(pf["name"])
+                    if classe_p:
+                        # Vérifier si ce planning est dans les fichiers de cet apprenti
+                        if pf["name"] in {f["name"] for f in fichiers_dossier}:
+                            apprenti.classe = classe_p
+                            break
 
             # Ajouter les ECF globaux qui contiennent le nom de l'apprenti
             from matcher import chercher_nom_dans_fichier
@@ -258,6 +247,15 @@ def effectuer_scan():
             apprenti.donnees_excel = associer_donnees_excel(
                 nom_apprenti, donnees_excel
             )
+
+            # Remonter les dates depuis le Excel vers l'apprenti
+            if apprenti.donnees_excel:
+                if apprenti.donnees_excel.date_embauche:
+                    apprenti.date_embauche = apprenti.donnees_excel.date_embauche
+                if apprenti.donnees_excel.date_debut_formation:
+                    apprenti.date_debut_formation = apprenti.donnees_excel.date_debut_formation
+                if apprenti.donnees_excel.date_fin_formation:
+                    apprenti.date_fin_formation = apprenti.donnees_excel.date_fin_formation
 
             # Construire la liste des pièces
             apprenti.pieces = construire_pieces_apprenti(
@@ -355,7 +353,8 @@ def detail_apprenti(index):
         return "Apprenti non trouvé", 404
 
     apprenti = scan_state["apprentis"][index]
-    return render_template("detail.html", apprenti=apprenti, index=index)
+    total = len(scan_state["apprentis"])
+    return render_template("detail.html", apprenti=apprenti, index=index, total=total)
 
 
 @app.route("/scan", methods=["POST"])
