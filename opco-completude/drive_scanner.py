@@ -582,6 +582,47 @@ class DriveScanner:
             logger.error(f"Erreur upload '{nom_fichier}': {e}")
             return None
 
+    def copier_fichier(self, file_id: str, parent_id: str,
+                       nouveau_nom: str = None) -> Optional[dict]:
+        """
+        Copie un fichier existant dans Google Drive vers un dossier cible.
+
+        Args:
+            file_id: ID du fichier source à copier
+            parent_id: ID du dossier de destination
+            nouveau_nom: Nom du fichier copié (optionnel, garde l'original sinon)
+
+        Returns:
+            Métadonnées du fichier copié {id, name, webViewLink} ou None.
+        """
+        if not self.service:
+            return None
+
+        try:
+            body = {"parents": [parent_id]}
+            if nouveau_nom:
+                body["name"] = nouveau_nom
+
+            copie = self.service.files().copy(
+                fileId=file_id,
+                body=body,
+                fields="id, name, webViewLink",
+                supportsAllDrives=True,
+            ).execute()
+            logger.info(
+                f"Fichier copié: {copie['name']} -> {parent_id} "
+                f"(id={copie['id']})"
+            )
+            return copie
+        except HttpError as e:
+            logger.error(f"Erreur copie fichier {file_id}: {e}")
+            return None
+
+    def lister_noms_fichiers(self, folder_id: str) -> set:
+        """Retourne l'ensemble des noms de fichiers dans un dossier."""
+        fichiers = self.lister_fichiers(folder_id)
+        return {f["name"] for f in fichiers}
+
     def trouver_ou_creer_dossier_apprenti(
         self, nom_apprenti: str, drive_cible_id: str,
         dossier_parent_nom: str = None,

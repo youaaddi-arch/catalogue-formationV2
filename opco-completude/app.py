@@ -584,6 +584,133 @@ def telecharger_pieces():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+@app.route("/dispatcher-pieces", methods=["POST"])
+def dispatcher_pieces():
+    """
+    Copie toutes les pièces jointes trouvées lors du dernier scan
+    dans le dossier Google Drive CIBLE de chaque apprenti.
+
+    - Fichiers déjà sur le Drive : copie via API Drive (files.copy)
+    - Fichiers locaux : upload vers le dossier Drive de l'apprenti
+
+    Évite les doublons en vérifiant les fichiers déjà présents.
+    """
+    if not scan_state["apprentis"]:
+        return jsonify({"error": "Aucune donnée. Lancez un scan d'abord."}), 400
+
+    scanner = DriveScanner()
+    if not scanner.connect():
+        return jsonify({
+            "error": "Impossible de se connecter à Google Drive. "
+                     "Vérifiez le fichier credentials.json."
+        }), 500
+
+    resultats = []
+    nb_succes = 0
+    nb_skip = 0
+    nb_erreurs = 0
+
+    total_apprentis = len(scan_state["apprentis"])
+
+    for idx, apprenti in enumerate(scan_state["apprentis"]):
+        pieces_trouvees = [
+            p for p in apprenti.pieces
+            if p.statut == "trouvee" and p.fichier_nom
+        ]
+        if not pieces_trouvees:
+            continue
+
+        # Trouver ou créer le dossier de l'apprenti dans le Drive CIBLE
+        dossier = scanner.trouver_ou_creer_dossier_apprenti(
+            apprenti.nom, config.DRIVE_CIBLE_ID
+        )
+        if not dossier:
+            for p in pieces_trouvees:
+                resultats.append({
+                    "apprenti": apprenti.nom,
+                    "fichier": p.fichier_nom,
+                    "statut": "erreur",
+                    "message": "Impossible de trouver/créer le dossier Drive",
+                })
+                nb_erreurs += 1
+            continue
+
+        # Lister les fichiers déjà présents pour éviter les doublons
+        fichiers_existants = scanner.lister_noms_fichiers(dossier["id"])
+
+        for piece in pieces_trouvees:
+            fichier_id = piece.fichier_id
+            nom_fichier = piece.fichier_nom
+
+            # Vérifier si le fichier existe déjà dans le dossier
+            if nom_fichier in fichiers_existants:
+                resultats.append({
+                    "apprenti": apprenti.nom,
+                    "fichier": nom_fichier,
+                    "piece": piece.nom,
+                    "statut": "skip",
+                    "message": "Déjà présent dans le dossier",
+                })
+                nb_skip += 1
+                continue
+
+            uploaded = None
+            try:
+                if fichier_id and os.path.isfile(fichier_id):
+                    # Fichier local → upload vers Drive
+                    with open(fichier_id, "rb") as f:
+                        contenu = f.read()
+                    from local_scanner import _deviner_mime_type
+                    mime = _deviner_mime_type(nom_fichier)
+                    uploaded = scanner.upload_fichier(
+                        contenu, nom_fichier, mime, dossier["id"]
+                    )
+                elif fichier_id:
+                    # Fichier déjà sur Google Drive → copie
+                    uploaded = scanner.copier_fichier(
+                        fichier_id, dossier["id"]
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Erreur dispatch {nom_fichier} pour {apprenti.nom}: {e}"
+                )
+
+            if uploaded:
+                resultats.append({
+                    "apprenti": apprenti.nom,
+                    "fichier": nom_fichier,
+                    "piece": piece.nom,
+                    "dossier": dossier.get("name", ""),
+                    "lien": uploaded.get("webViewLink", ""),
+                    "statut": "succes",
+                    "message": "Copié avec succès",
+                })
+                nb_succes += 1
+            else:
+                resultats.append({
+                    "apprenti": apprenti.nom,
+                    "fichier": nom_fichier,
+                    "piece": piece.nom,
+                    "statut": "erreur",
+                    "message": "Échec de la copie/upload",
+                })
+                nb_erreurs += 1
+
+        logger.info(
+            f"Dispatch {apprenti.nom}: {idx+1}/{total_apprentis} traité"
+        )
+
+    return jsonify({
+        "resultats": resultats,
+        "resume": {
+            "total": len(resultats),
+            "succes": nb_succes,
+            "skip": nb_skip,
+            "erreurs": nb_erreurs,
+        },
+    })
+
+
 @app.route("/upload")
 def upload_page():
     """Page d'upload de pièces jointes vers Google Drive."""
