@@ -283,12 +283,107 @@ def effectuer_scan():
         scan_state["apprentis"] = apprentis
         scan_state["stats"] = stats
         scan_state["derniere_maj"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        scan_state["progression"] = 100
 
         logger.info(
             f"Scan terminé: {stats['nb_complets']}/{len(apprentis)} "
             f"dossiers complets"
         )
+
+        # 8. Dispatch automatique : copier toutes les pièces trouvées
+        #    dans les dossiers du Drive CIBLE
+        logger.info("Dispatch automatique des pièces vers le Drive CIBLE...")
+        scan_state["progression"] = 95
+
+        nb_copies = 0
+        nb_skip = 0
+        nb_err = 0
+
+        # Reconnecter le scanner (le cache a pu expirer)
+        if not drive_ok:
+            drive_ok = scanner.connect()
+
+        if drive_ok:
+            for apprenti in apprentis:
+                pieces_a_copier = [
+                    p for p in apprenti.pieces
+                    if p.statut == "trouvee" and p.fichier_nom
+                ]
+                if not pieces_a_copier:
+                    continue
+
+                # Trouver le dossier cible de l'apprenti
+                dossier_cible = None
+                if (apprenti.dossier_id
+                        and apprenti.dossier_source == "cible"
+                        and not os.path.isdir(str(apprenti.dossier_id))):
+                    dossier_cible = {
+                        "id": apprenti.dossier_id,
+                        "name": apprenti.dossier_nom or apprenti.nom,
+                    }
+                else:
+                    dossier_cible = scanner.trouver_ou_creer_dossier_apprenti(
+                        apprenti.nom, config.DRIVE_CIBLE_ID
+                    )
+
+                if not dossier_cible:
+                    logger.warning(
+                        f"Dispatch: pas de dossier Drive pour {apprenti.nom}"
+                    )
+                    nb_err += len(pieces_a_copier)
+                    continue
+
+                # Fichiers déjà présents dans le dossier
+                existants = scanner.lister_noms_fichiers(dossier_cible["id"])
+
+                for piece in pieces_a_copier:
+                    if piece.fichier_nom in existants:
+                        nb_skip += 1
+                        continue
+
+                    try:
+                        fid = piece.fichier_id
+                        if fid and os.path.isfile(fid):
+                            with open(fid, "rb") as f:
+                                contenu = f.read()
+                            from local_scanner import _deviner_mime_type
+                            mime = _deviner_mime_type(piece.fichier_nom)
+                            ok = scanner.upload_fichier(
+                                contenu, piece.fichier_nom,
+                                mime, dossier_cible["id"]
+                            )
+                        elif fid:
+                            ok = scanner.copier_fichier(
+                                fid, dossier_cible["id"]
+                            )
+                        else:
+                            ok = None
+
+                        if ok:
+                            nb_copies += 1
+                        else:
+                            nb_err += 1
+                    except Exception as e:
+                        logger.warning(
+                            f"Dispatch {piece.fichier_nom} "
+                            f"pour {apprenti.nom}: {e}"
+                        )
+                        nb_err += 1
+
+            logger.info(
+                f"Dispatch terminé: {nb_copies} copiés, "
+                f"{nb_skip} déjà présents, {nb_err} erreurs"
+            )
+            stats["dispatch"] = {
+                "copies": nb_copies,
+                "skip": nb_skip,
+                "erreurs": nb_err,
+            }
+        else:
+            logger.warning(
+                "Dispatch ignoré: pas de connexion Google Drive"
+            )
+
+        scan_state["progression"] = 100
 
     except Exception as e:
         logger.error(f"Erreur pendant le scan: {e}", exc_info=True)

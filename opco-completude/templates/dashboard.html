@@ -32,9 +32,6 @@
            onclick="this.innerHTML='<i class=\'bi bi-hourglass-split\'></i> Téléchargement...'; this.classList.add('disabled');">
             <i class="bi bi-download"></i> Télécharger toutes les pièces
         </a>
-        <button class="btn btn-warning" id="btn-dispatcher">
-            <i class="bi bi-cloud-arrow-up-fill"></i> Envoyer pièces vers Google Drive
-        </button>
         {% endif %}
     </div>
 </div>
@@ -48,25 +45,20 @@
     <small id="progress-text" class="text-muted mt-1">Initialisation...</small>
 </div>
 
-<!-- Résultat du dispatch vers Drive -->
-<div id="dispatch-section" class="d-none mb-3">
-    <div class="card border-warning">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between">
-            <span><i class="bi bi-cloud-arrow-up-fill"></i> Envoi des pièces vers Google Drive</span>
-            <button class="btn btn-sm btn-close" onclick="document.getElementById('dispatch-section').classList.add('d-none')"></button>
-        </div>
-        <div class="card-body">
-            <div id="dispatch-progress" class="mb-3">
-                <div class="progress" style="height: 25px;">
-                    <div id="dispatch-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
-                         style="width: 100%;">Envoi en cours...</div>
-                </div>
-            </div>
-            <div id="dispatch-resume" class="d-none"></div>
-            <div id="dispatch-detail" class="d-none" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
+<!-- Résultat du dispatch automatique vers Drive -->
+{% if stats and stats.get('dispatch') %}
+<div class="alert {% if stats.dispatch.erreurs == 0 %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center mb-3" role="alert">
+    <i class="bi bi-cloud-check-fill fs-4 me-3"></i>
+    <div>
+        <strong>Pièces envoyées automatiquement vers Google Drive :</strong>
+        <span class="badge bg-success ms-2">{{ stats.dispatch.copies }} copiées</span>
+        <span class="badge bg-info ms-1">{{ stats.dispatch.skip }} déjà présentes</span>
+        {% if stats.dispatch.erreurs > 0 %}
+        <span class="badge bg-danger ms-1">{{ stats.dispatch.erreurs }} erreurs</span>
+        {% endif %}
     </div>
 </div>
+{% endif %}
 
 {% if stats %}
 <!-- Indicateurs globaux -->
@@ -403,89 +395,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (filterPiece) filterPiece.addEventListener('change', filtrerTableau);
     if (sortBy) sortBy.addEventListener('change', trierTableau);
 
-    // Dispatcher les pièces vers Google Drive
-    const btnDispatcher = document.getElementById('btn-dispatcher');
-    if (btnDispatcher) {
-        btnDispatcher.addEventListener('click', function() {
-            if (!confirm('Envoyer toutes les pièces trouvées dans les dossiers Google Drive des candidats ?\n\nCette opération va copier chaque pièce jointe identifiée dans le dossier Drive correspondant à chaque apprenti.')) {
-                return;
-            }
-
-            const dispatchSection = document.getElementById('dispatch-section');
-            const dispatchProgressBar = document.getElementById('dispatch-progress-bar');
-            const dispatchResume = document.getElementById('dispatch-resume');
-            const dispatchDetail = document.getElementById('dispatch-detail');
-
-            dispatchSection.classList.remove('d-none');
-            dispatchResume.classList.add('d-none');
-            dispatchDetail.classList.add('d-none');
-            dispatchProgressBar.style.width = '100%';
-            dispatchProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
-            dispatchProgressBar.textContent = 'Envoi en cours... (cela peut prendre plusieurs minutes)';
-
-            btnDispatcher.disabled = true;
-            btnDispatcher.innerHTML = '<i class="bi bi-hourglass-split"></i> Envoi en cours...';
-
-            fetch('/dispatcher-pieces', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) {
-                        dispatchProgressBar.className = 'progress-bar bg-danger';
-                        dispatchProgressBar.textContent = 'Erreur: ' + data.error;
-                        btnDispatcher.disabled = false;
-                        btnDispatcher.innerHTML = '<i class="bi bi-cloud-arrow-up-fill"></i> Envoyer pièces vers Google Drive';
-                        return;
-                    }
-
-                    const r = data.resume;
-                    dispatchProgressBar.className = 'progress-bar bg-success';
-                    dispatchProgressBar.textContent = 'Terminé !';
-
-                    dispatchResume.classList.remove('d-none');
-                    dispatchResume.innerHTML = `
-                        <div class="row text-center mb-3">
-                            <div class="col"><h4 class="text-primary">${r.total}</h4><small>Fichiers traités</small></div>
-                            <div class="col"><h4 class="text-success">${r.succes}</h4><small>Copiés avec succès</small></div>
-                            <div class="col"><h4 class="text-info">${r.skip}</h4><small>Déjà présents</small></div>
-                            <div class="col"><h4 class="text-danger">${r.erreurs}</h4><small>Erreurs</small></div>
-                        </div>
-                    `;
-
-                    dispatchDetail.classList.remove('d-none');
-                    let html = '<table class="table table-sm table-hover"><thead class="table-light"><tr><th>Apprenti</th><th>Fichier</th><th>Pièce</th><th>Statut</th></tr></thead><tbody>';
-                    data.resultats.forEach(res => {
-                        let badge = '';
-                        let rowClass = '';
-                        if (res.statut === 'succes') {
-                            badge = '<span class="badge bg-success">OK</span>';
-                            rowClass = 'table-success';
-                        } else if (res.statut === 'skip') {
-                            badge = '<span class="badge bg-info">Déjà présent</span>';
-                        } else {
-                            badge = '<span class="badge bg-danger">Erreur</span>';
-                            rowClass = 'table-danger';
-                        }
-                        html += `<tr class="${rowClass}">
-                            <td>${res.apprenti}</td>
-                            <td class="text-truncate" style="max-width:200px;" title="${res.fichier}">${res.fichier}</td>
-                            <td><small>${res.piece || '-'}</small></td>
-                            <td>${badge}</td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table>';
-                    dispatchDetail.innerHTML = html;
-
-                    btnDispatcher.disabled = false;
-                    btnDispatcher.innerHTML = '<i class="bi bi-cloud-arrow-up-fill"></i> Envoyer pièces vers Google Drive';
-                })
-                .catch(err => {
-                    dispatchProgressBar.className = 'progress-bar bg-danger';
-                    dispatchProgressBar.textContent = 'Erreur: ' + err;
-                    btnDispatcher.disabled = false;
-                    btnDispatcher.innerHTML = '<i class="bi bi-cloud-arrow-up-fill"></i> Envoyer pièces vers Google Drive';
-                });
-        });
-    }
 });
 </script>
 {% endblock %}
