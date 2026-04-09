@@ -288,24 +288,21 @@ def main():
     print("\n📂 Chargement des dossiers candidats dans le Drive CIBLE...")
     dossiers_candidats = {}  # nom_apprenti -> {id, name}
 
+    # Les dossiers candidats sont directement à la racine du Drive
     dossiers_racine = lister_dossiers(service, DRIVE_CIBLE_ID)
     for dr in dossiers_racine:
-        if dr["name"] in DOSSIERS_APPRENANTS:
-            sous = lister_dossiers(service, dr["id"])
-            for sd in sous:
-                apprenti = matcher_apprenti(sd["name"])
-                if apprenti and apprenti not in dossiers_candidats:
-                    dossiers_candidats[apprenti] = {
-                        "id": sd["id"],
-                        "name": sd["name"],
-                    }
+        # Essayer de matcher chaque dossier avec un apprenti
+        apprenti = matcher_apprenti(dr["name"])
+        if apprenti and apprenti not in dossiers_candidats:
+            dossiers_candidats[apprenti] = {
+                "id": dr["id"],
+                "name": dr["name"],
+            }
 
     print(f"   -> {len(dossiers_candidats)} dossiers candidats trouvés")
 
     if not dossiers_candidats:
         print("\n❌ Aucun dossier candidat trouvé dans le Drive CIBLE !")
-        print("   Vérifiez que le Drive contient des dossiers dans")
-        print(f"   'Dossiers apprenants', 'PARTIE 2...', etc.")
         sys.exit(1)
 
     # 2. Pour chaque candidat, chercher ses fichiers et les copier
