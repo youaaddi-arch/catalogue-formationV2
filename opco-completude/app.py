@@ -271,10 +271,26 @@ def effectuer_scan():
                     None,
                 )
                 if piece_cerfa:
-                    # Essayer depuis le Drive
-                    if piece_cerfa.fichier_id and drive_ok:
+                    # 1. Essayer depuis le fichier local (chercher par path)
+                    for f in fichiers_dossier:
+                        if f["name"] == piece_cerfa.fichier_nom and f.get("path"):
+                            logger.info(
+                                f"  Extraction date CERFA local: {f['path']}"
+                            )
+                            date_contrat = extraire_date_contrat_depuis_fichier(
+                                f["path"]
+                            )
+                            if date_contrat:
+                                apprenti.date_embauche = date_contrat
+                                logger.info(
+                                    f"  -> Date début contrat: {date_contrat}"
+                                )
+                            break
+
+                    # 2. Si pas trouvé en local, essayer depuis le Drive
+                    if not apprenti.date_embauche and piece_cerfa.fichier_id and drive_ok:
                         logger.info(
-                            f"  Téléchargement CERFA pour extraction date: "
+                            f"  Téléchargement CERFA Drive: "
                             f"{piece_cerfa.fichier_nom}"
                         )
                         pdf_bytes = scanner.telecharger_fichier(
@@ -287,23 +303,9 @@ def effectuer_scan():
                             if date_contrat:
                                 apprenti.date_embauche = date_contrat
                                 logger.info(
-                                    f"  -> Date début contrat: {date_contrat}"
+                                    f"  -> Date début contrat (Drive): "
+                                    f"{date_contrat}"
                                 )
-
-                    # Essayer depuis le fichier local si pas trouvé
-                    if not apprenti.date_embauche and piece_cerfa.source == "local":
-                        for f in fichiers_dossier:
-                            if f["name"] == piece_cerfa.fichier_nom and "path" in f:
-                                date_contrat = extraire_date_contrat_depuis_fichier(
-                                    f["path"]
-                                )
-                                if date_contrat:
-                                    apprenti.date_embauche = date_contrat
-                                    logger.info(
-                                        f"  -> Date début contrat (local): "
-                                        f"{date_contrat}"
-                                    )
-                                break
 
             # Calculer le score
             apprenti.calculer_score()

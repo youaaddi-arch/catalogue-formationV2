@@ -9,31 +9,43 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Patterns pour trouver la date de début d'exécution du contrat dans le CERFA
+# Ordonnés du plus spécifique au plus générique
 DATE_PATTERNS = [
     # "Date de début d'exécution du contrat : 13/02/2024"
     re.compile(
-        r"[Dd]ate\s+de\s+d[ée]but\s+d['']?ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
+        r"[Dd]ate\s+de\s+d[ée]but\s+d[''\u2019]?ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
         r"(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
+    ),
+    # Multi-ligne: "Date de début d'exécution du\ncontrat :\n13/02/2024"
+    re.compile(
+        r"[Dd]ate\s+de\s+d[ée]but\s+d[''\u2019]?\s*ex[ée]cution\s+du\s*\n?\s*"
+        r"contrat\s*[:\-]?\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
+        re.MULTILINE,
     ),
     # "Début d'exécution du contrat : 13/02/2024"
     re.compile(
-        r"[Dd][ée]but\s+d['']?ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
+        r"[Dd][ée]but\s+d[''\u2019]?\s*ex[ée]cution\s+du\s+contrat\s*[:\-]?\s*"
         r"(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
     ),
-    # "Date de début d'exécution du" suivi de "contrat :" sur la ligne suivante
+    # "début d'exécution du\ncontrat :\n13/02/2024" (multi-ligne)
     re.compile(
-        r"[Dd]ate\s+de\s+d[ée]but\s+d['']?ex[ée]cution\s+du\s*\n?\s*contrat\s*[:\-]?\s*"
+        r"d[ée]but\s+d[''\u2019]?\s*ex[ée]cution\s+du\s*\n?\s*contrat\s*[:\-]?\s*\n?\s*"
         r"(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
-        re.MULTILINE,
+        re.IGNORECASE | re.MULTILINE,
     ),
-    # Pattern plus souple : "contrat" suivi d'une date sur la même ligne ou la suivante
+    # "exécution du contrat" suivi d'une date quelques lignes après
     re.compile(
-        r"contrat\s*[:\-]?\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
+        r"ex[ée]cution\s+du\s*\n?\s*contrat\s*[:\-]?\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
         re.IGNORECASE | re.MULTILINE,
     ),
     # "Date d'embauche : 13/02/2024"
     re.compile(
-        r"[Dd]ate\s+d['']?embauche\s*[:\-]?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
+        r"[Dd]ate\s+d[''\u2019]?\s*embauche\s*[:\-]?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})"
+    ),
+    # "contrat :" suivi d'une date sur la même ligne ou la suivante
+    re.compile(
+        r"contrat\s*[:\-]\s*\n?\s*(\d{2}[/\.\-]\d{2}[/\.\-]\d{4})",
+        re.IGNORECASE | re.MULTILINE,
     ),
 ]
 
@@ -56,7 +68,9 @@ def extraire_date_contrat_depuis_pdf(pdf_bytes: bytes) -> Optional[str]:
     try:
         import pdfplumber
     except ImportError:
-        logger.warning("pdfplumber non installé, impossible de lire les PDF CERFA")
+        logger.error(
+            "pdfplumber non installé ! Installer avec: pip3 install pdfplumber"
+        )
         return None
 
     try:
@@ -68,18 +82,28 @@ def extraire_date_contrat_depuis_pdf(pdf_bytes: bytes) -> Optional[str]:
                     texte_complet += texte + "\n"
 
             if not texte_complet:
-                logger.debug("Aucun texte extrait du PDF CERFA")
+                logger.warning("Aucun texte extrait du PDF CERFA (PDF image ?)")
                 return None
 
+            logger.debug(f"Texte CERFA extrait ({len(texte_complet)} chars)")
+
             # Chercher la date avec chaque pattern
-            for pattern in DATE_PATTERNS:
+            for i, pattern in enumerate(DATE_PATTERNS):
                 match = pattern.search(texte_complet)
                 if match:
                     date = _normaliser_date(match.group(1))
-                    logger.info(f"Date de début de contrat extraite du CERFA: {date}")
+                    logger.info(
+                        f"Date début contrat extraite du CERFA: {date} "
+                        f"(pattern #{i+1})"
+                    )
                     return date
 
-            logger.debug("Date de début de contrat non trouvée dans le CERFA")
+            # Log du texte pour debug si rien trouvé
+            logger.warning(
+                "Date de début de contrat non trouvée dans le CERFA. "
+                "Premiers 500 chars du texte extrait:"
+            )
+            logger.warning(texte_complet[:500])
             return None
 
     except Exception as e:
@@ -98,6 +122,12 @@ def extraire_date_contrat_depuis_fichier(chemin: str) -> Optional[str]:
         La date au format dd/mm/yyyy ou None si non trouvée
     """
     if not os.path.exists(chemin):
+        logger.warning(f"Fichier CERFA non trouvé: {chemin}")
+        return None
+
+    # Vérifier que c'est un PDF
+    if not chemin.lower().endswith(".pdf"):
+        logger.debug(f"Fichier CERFA ignoré (pas un PDF): {chemin}")
         return None
 
     try:
