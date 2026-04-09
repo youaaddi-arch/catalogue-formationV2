@@ -4,7 +4,11 @@ import io
 import json
 import logging
 import os
+import shutil
+import tempfile
+import zipfile
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from flask import Flask, jsonify, render_template, request, send_file
@@ -475,6 +479,106 @@ def api_apprentis():
             })
 
     return jsonify(result)
+
+
+@app.route("/telecharger-pieces")
+def telecharger_pieces():
+    """
+    Télécharge toutes les pièces jointes trouvées, organisées dans un ZIP
+    avec un dossier par candidat (NOM Prénom).
+    """
+    if not scan_state["apprentis"]:
+        return "Aucune donnée. Lancez un scan d'abord.", 400
+
+    tmpdir = tempfile.mkdtemp(prefix="opco_pieces_")
+
+    try:
+        # Connexion Drive si nécessaire (pour les fichiers non locaux)
+        scanner = DriveScanner()
+        drive_ok = scanner.connect()
+
+        for apprenti in scan_state["apprentis"]:
+            # Créer un dossier par candidat (nom nettoyé pour le filesystem)
+            nom_dossier = apprenti.nom.strip()
+            # Nettoyer les caractères interdits dans les noms de dossier
+            nom_dossier = "".join(
+                c if c.isalnum() or c in " -_.()" else "_"
+                for c in nom_dossier
+            ).strip()
+            if not nom_dossier:
+                nom_dossier = f"candidat_{scan_state['apprentis'].index(apprenti)}"
+
+            dossier_candidat = os.path.join(tmpdir, nom_dossier)
+            os.makedirs(dossier_candidat, exist_ok=True)
+
+            for piece in apprenti.pieces:
+                if piece.statut != "trouvee" or not piece.fichier_nom:
+                    continue
+
+                fichier_id = piece.fichier_id
+                nom_fichier = piece.fichier_nom.strip()
+                # Nettoyer le nom de fichier
+                nom_fichier = "".join(
+                    c if c.isalnum() or c in " -_.()" else "_"
+                    for c in nom_fichier
+                ).strip()
+                if not nom_fichier:
+                    nom_fichier = f"{piece.id}_fichier"
+
+                dest = os.path.join(dossier_candidat, nom_fichier)
+
+                # Éviter les doublons de nom dans le même dossier
+                if os.path.exists(dest):
+                    base, ext = os.path.splitext(nom_fichier)
+                    i = 2
+                    while os.path.exists(dest):
+                        dest = os.path.join(
+                            dossier_candidat, f"{base}_{i}{ext}"
+                        )
+                        i += 1
+
+                # Télécharger selon la source
+                try:
+                    if fichier_id and os.path.isfile(fichier_id):
+                        # Fichier local — copie directe
+                        shutil.copy2(fichier_id, dest)
+                    elif fichier_id and drive_ok:
+                        # Fichier Google Drive — téléchargement via API
+                        contenu = scanner.telecharger_fichier(fichier_id)
+                        if contenu:
+                            # Ajouter .pdf si c'est un export Google
+                            if not Path(dest).suffix:
+                                dest += ".pdf"
+                            with open(dest, "wb") as f:
+                                f.write(contenu)
+                except Exception as e:
+                    logger.warning(
+                        f"Impossible de télécharger {piece.fichier_nom} "
+                        f"pour {apprenti.nom}: {e}"
+                    )
+
+        # Créer le ZIP en mémoire
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, _dirs, files in os.walk(tmpdir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, tmpdir)
+                    zf.write(file_path, arcname)
+
+        zip_buffer.seek(0)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        return send_file(
+            zip_buffer,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=f"pieces_jointes_opco_ep_{timestamp}.zip",
+        )
+
+    finally:
+        # Nettoyer le dossier temporaire
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 @app.route("/settings")

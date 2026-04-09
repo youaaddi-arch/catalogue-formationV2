@@ -19,11 +19,20 @@
         <small class="text-muted">Dernier scan : {{ derniere_maj }}</small>
         {% endif %}
     </div>
-    <div>
+    <div class="d-flex gap-2">
         <button id="btn-scan" class="btn btn-primary" {% if en_cours %}disabled{% endif %}>
             <i class="bi bi-arrow-clockwise"></i>
             {% if en_cours %}Scan en cours...{% else %}Lancer le scan{% endif %}
         </button>
+        {% if apprentis %}
+        <a href="/export" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </a>
+        <a href="/telecharger-pieces" class="btn btn-outline-primary" id="btn-download-pieces"
+           onclick="this.innerHTML='<i class=\'bi bi-hourglass-split\'></i> Téléchargement...'; this.classList.add('disabled');">
+            <i class="bi bi-download"></i> Télécharger toutes les pièces
+        </a>
+        {% endif %}
     </div>
 </div>
 

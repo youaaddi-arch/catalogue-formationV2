@@ -1,5 +1,6 @@
 """Module de scan Google Drive pour l'application OPCO EP."""
 
+import io
 import logging
 import re
 from typing import Optional
@@ -7,6 +8,7 @@ from typing import Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaIoBaseDownload
 
 import config
 
@@ -451,6 +453,65 @@ class DriveScanner:
             f"and trashed = false"
         )
         return self._list_files(query)
+
+    def telecharger_fichier(self, file_id: str) -> Optional[bytes]:
+        """
+        Télécharge un fichier depuis Google Drive par son ID.
+
+        Gère les fichiers Google natifs (Docs, Sheets, Slides) en les
+        exportant en PDF, et les fichiers classiques via get_media.
+
+        Returns:
+            Le contenu du fichier en bytes, ou None en cas d'erreur.
+        """
+        if not self.service:
+            logger.error("Pas de connexion Drive pour le téléchargement")
+            return None
+
+        try:
+            # Récupérer les métadonnées pour connaître le mimeType
+            meta = self.service.files().get(
+                fileId=file_id,
+                fields="id, name, mimeType",
+                supportsAllDrives=True,
+            ).execute()
+
+            mime = meta.get("mimeType", "")
+            name = meta.get("name", file_id)
+
+            # Les types Google natifs doivent être exportés
+            export_map = {
+                "application/vnd.google-apps.document": "application/pdf",
+                "application/vnd.google-apps.spreadsheet": "application/pdf",
+                "application/vnd.google-apps.presentation": "application/pdf",
+                "application/vnd.google-apps.drawing": "application/pdf",
+            }
+
+            buf = io.BytesIO()
+
+            if mime in export_map:
+                request = self.service.files().export_media(
+                    fileId=file_id, mimeType=export_map[mime]
+                )
+            else:
+                request = self.service.files().get_media(
+                    fileId=file_id, supportsAllDrives=True
+                )
+
+            downloader = MediaIoBaseDownload(buf, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            logger.info(f"Téléchargé: {name} ({len(buf.getvalue())} octets)")
+            return buf.getvalue()
+
+        except HttpError as e:
+            logger.error(f"Erreur téléchargement Drive {file_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Erreur inattendue téléchargement {file_id}: {e}")
+            return None
 
     def clear_cache(self):
         """Vide le cache des requêtes."""
