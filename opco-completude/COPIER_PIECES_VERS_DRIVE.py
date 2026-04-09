@@ -250,28 +250,53 @@ def chercher_par_nom(service, nom_apprenti):
     return tous
 
 
-def copier_fichier(service, file_id, parent_id):
-    """Copie un fichier Drive vers un dossier cible."""
-    body = {"parents": [parent_id]}
-    copie = service.files().copy(
-        fileId=file_id, body=body,
-        fields="id, name, webViewLink",
+def telecharger_fichier(service, file_id):
+    """Télécharge le contenu d'un fichier Drive. Exporte les Google Docs en PDF."""
+    from googleapiclient.http import MediaIoBaseDownload
+
+    meta = service.files().get(
+        fileId=file_id, fields="mimeType, name",
         supportsAllDrives=True,
     ).execute()
-    return copie
+    mime = meta.get("mimeType", "")
+
+    export_map = {
+        "application/vnd.google-apps.document": "application/pdf",
+        "application/vnd.google-apps.spreadsheet": "application/pdf",
+        "application/vnd.google-apps.presentation": "application/pdf",
+        "application/vnd.google-apps.drawing": "application/pdf",
+    }
+
+    buf = io.BytesIO()
+    if mime in export_map:
+        req = service.files().export_media(fileId=file_id, mimeType=export_map[mime])
+    else:
+        req = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+
+    dl = MediaIoBaseDownload(buf, req)
+    done = False
+    while not done:
+        _, done = dl.next_chunk()
+    return buf.getvalue(), mime
 
 
-def upload_local(service, chemin, nom, parent_id):
-    """Upload un fichier local vers un dossier Drive."""
-    with open(chemin, "rb") as f:
-        contenu = f.read()
-    media = MediaIoBaseUpload(io.BytesIO(contenu), mimetype="application/octet-stream", resumable=True)
+def upload_vers_drive(service, contenu, nom, mime_type, parent_id):
+    """Upload un fichier dans un dossier du Drive partagé."""
+    media = MediaIoBaseUpload(
+        io.BytesIO(contenu), mimetype=mime_type, resumable=True,
+    )
     meta = {"name": nom, "parents": [parent_id]}
     return service.files().create(
         body=meta, media_body=media,
         fields="id, name, webViewLink",
         supportsAllDrives=True,
     ).execute()
+
+
+def copier_vers_dossier(service, file_id, nom_fichier, parent_id):
+    """Télécharge un fichier Drive puis le re-upload dans le dossier cible."""
+    contenu, mime = telecharger_fichier(service, file_id)
+    return upload_vers_drive(service, contenu, nom_fichier, mime, parent_id)
 
 
 # ── Script principal ───────────────────────────────────────────────────
@@ -338,11 +363,12 @@ def main():
 
         for f in pieces_a_copier:
             try:
-                copier_fichier(service, f["id"], dossier["id"])
+                copier_vers_dossier(service, f["id"], f["name"], dossier["id"])
                 print(f"     ✅ {f['name']}")
                 total_copies += 1
             except HttpError as e:
                 if "exportSizeLimitExceeded" in str(e):
+                    print(f"     ⏭️  {f['name']} (trop volumineux)")
                     total_skip += 1
                 else:
                     print(f"     ❌ {f['name']} : {e}")
@@ -370,7 +396,10 @@ def main():
                             existants = {f["name"] for f in lister_fichiers(service, dossier["id"])}
                             if fname not in existants:
                                 try:
-                                    upload_local(service, chemin, fname, dossier["id"])
+                                    with open(chemin, "rb") as fh:
+                                        contenu = fh.read()
+                                    upload_vers_drive(service, contenu, fname,
+                                                      "application/octet-stream", dossier["id"])
                                     print(f"     ✅ (local) {fname} -> {apprenti}")
                                     total_copies += 1
                                 except Exception as e:
