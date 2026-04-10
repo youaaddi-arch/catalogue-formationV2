@@ -1,0 +1,404 @@
+{
+  "name": "PNBS - Agent Veille Appels d'Offres Formation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "⏰ Veille Programmée (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-webhook",
+      "name": "🔗 Webhook Manuel",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 500],
+      "webhookId": "tender-agent-trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://boamp-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/boamp/records",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "\"formation professionnelle\" OR \"organisme de formation\" OR \"prestation de formation\" OR \"plan de développement des compétences\""
+            },
+            {
+              "name": "where",
+              "value": "dateparution >= '{{ $now.minus(7, 'days').format('yyyy-MM-dd') }}'"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            },
+            {
+              "name": "sort",
+              "value": "-dateparution"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "scrape-boamp",
+      "name": "🏛️ Scrape BOAMP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://www.marches-publics.gouv.fr/app/es/syndication/flux-rss",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "scrape-place",
+      "name": "🏢 Scrape PLACE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://ted.europa.eu/api/v3.0/notices/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "cpv:80500000 OR cpv:80530000 OR cpv:80532000 AND CY:FR"
+            },
+            {
+              "name": "size",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "scrape-ted",
+      "name": "🇪🇺 Scrape TED Europa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "🔀 Fusionner Résultats",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [760, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliser et dédupliquer les appels d'offres\nconst items = $input.all();\nconst tenders = [];\nconst seenTitles = new Set();\n\nfor (const item of items) {\n  const data = item.json;\n  let tender = null;\n  \n  // Parsing BOAMP\n  if (data.results && Array.isArray(data.results)) {\n    for (const record of data.results) {\n      const fields = record.record?.fields || record;\n      const title = (fields.objet || 'Sans titre').toLowerCase().trim();\n      \n      if (!seenTitles.has(title.substring(0, 80))) {\n        seenTitles.add(title.substring(0, 80));\n        tenders.push({\n          id: `BOAMP-${fields.idweb || fields.id || Date.now()}`,\n          title: fields.objet || 'Sans titre',\n          source: 'BOAMP',\n          url: `https://www.boamp.fr/avis/detail/${fields.idweb || ''}`,\n          publication_date: fields.dateparution || '',\n          deadline: fields.datelimitereponse || '',\n          description: fields.descripteur || fields.objet || '',\n          buyer: fields.nomacheteur || '',\n          cpv_codes: (fields.cpv || '').split(',').filter(c => c.trim()),\n          amount_estimate: String(fields.montant || ''),\n          location: fields.departement || ''\n        });\n      }\n    }\n  }\n  \n  // Parsing RSS (PLACE)\n  if (data.rss || data.feed || data.channel) {\n    const entries = data.rss?.channel?.item || data.feed?.entry || [];\n    const items_list = Array.isArray(entries) ? entries : [entries];\n    \n    for (const entry of items_list) {\n      const title = (entry.title || '').toLowerCase();\n      const desc = (entry.description || entry.summary || '').toLowerCase();\n      const combined = `${title} ${desc}`;\n      \n      const keywords = ['formation', 'organisme de formation', 'prestation de formation', 'formation professionnelle'];\n      if (keywords.some(kw => combined.includes(kw))) {\n        const entryTitle = entry.title || 'Sans titre';\n        if (!seenTitles.has(entryTitle.toLowerCase().substring(0, 80))) {\n          seenTitles.add(entryTitle.toLowerCase().substring(0, 80));\n          tenders.push({\n            id: `PLACE-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,\n            title: entryTitle,\n            source: 'PLACE',\n            url: entry.link || '',\n            publication_date: entry.pubDate || entry.published || '',\n            deadline: '',\n            description: entry.description || entry.summary || '',\n            buyer: entry.author || '',\n            cpv_codes: [],\n            amount_estimate: '',\n            location: ''\n          });\n        }\n      }\n    }\n  }\n}\n\nreturn tenders.map(t => ({ json: t }));"
+      },
+      "id": "normalize-data",
+      "name": "⚙️ Normaliser & Dédupliquer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "filter-title",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "formation",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "filter-desc",
+              "leftValue": "={{ $json.description }}",
+              "rightValue": "formation",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "filter-cpv",
+              "leftValue": "={{ $json.cpv_codes.join(',') }}",
+              "rightValue": "8050",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ]
+        }
+      },
+      "id": "filter-relevant",
+      "name": "🎯 Filtrer Formation",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://tender-api:8000/api/analyze",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tender",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "call-langgraph",
+      "name": "🤖 Analyse LangGraph",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.analysis.relevance_score }}",
+              "operation": "largerEqual",
+              "value2": 0.6
+            }
+          ]
+        }
+      },
+      "id": "check-relevance",
+      "name": "📊 Score ≥ 0.6 ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1680, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://tender-api:8000/api/generate-response",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tender_id",
+              "value": "={{ $json.tender.id }}"
+            },
+            {
+              "name": "analysis",
+              "value": "={{ JSON.stringify($json.analysis) }}"
+            },
+            {
+              "name": "tender",
+              "value": "={{ JSON.stringify($json.tender) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "generate-response",
+      "name": "📝 Générer Réponse AO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+        "subject": "🎯 AO Pertinent : {{ $json.tender.title }}",
+        "emailType": "html",
+        "html": "<h2>🎯 Appel d'Offres Pertinent Détecté</h2>\n<table style='border-collapse:collapse; width:100%; font-family:Arial;'>\n<tr style='background:#2563eb; color:white;'>\n<td style='padding:12px;' colspan='2'><strong>{{ $json.tender.title }}</strong></td>\n</tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Source</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ $json.tender.source }}</td></tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Acheteur</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ $json.tender.buyer }}</td></tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Score Pertinence</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ Math.round($json.analysis.relevance_score * 100) }}%</td></tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Date Limite</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ $json.tender.deadline }}</td></tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Action</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ $json.analysis.recommended_action }}</td></tr>\n<tr><td style='padding:8px; border:1px solid #ddd;'><strong>Résumé</strong></td><td style='padding:8px; border:1px solid #ddd;'>{{ $json.analysis.summary }}</td></tr>\n</table>\n<p><a href='{{ $json.tender.url }}'>📄 Voir l'appel d'offres</a></p>\n<hr>\n<p><em>Agent Veille AO - Paris Nord Business School</em></p>",
+        "options": {}
+      },
+      "id": "send-email-relevant",
+      "name": "📧 Email AO Pertinent",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2160, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://tender-api:8000/api/results",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tender",
+              "value": "={{ JSON.stringify($json.tender) }}"
+            },
+            {
+              "name": "analysis",
+              "value": "={{ JSON.stringify($json.analysis) }}"
+            },
+            {
+              "name": "response",
+              "value": "={{ JSON.stringify($json.response || {}) }}"
+            },
+            {
+              "name": "status",
+              "value": "processed"
+            }
+          ]
+        }
+      },
+      "id": "save-results",
+      "name": "💾 Sauvegarder Résultats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Résumé quotidien des AO non retenus\nconst item = $input.item;\nconst data = item.json;\n\nreturn [{\n  json: {\n    status: 'skipped',\n    tender_id: data.tender?.id || 'N/A',\n    title: data.tender?.title || 'N/A',\n    score: data.analysis?.relevance_score || 0,\n    reason: data.analysis?.summary || 'Score insuffisant'\n  }\n}];"
+      },
+      "id": "log-skipped",
+      "name": "📋 Log AO Ignoré",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 520]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+        "subject": "📊 Résumé Veille AO - {{ $now.format('dd/MM/yyyy') }}",
+        "emailType": "html",
+        "html": "<h2>📊 Résumé de la Veille Appels d'Offres</h2>\n<p>Date : {{ $now.format('dd/MM/yyyy HH:mm') }}</p>\n<h3>AO traités aujourd'hui</h3>\n<ul>\n{{ $items().map(item => `<li><strong>${item.json.title}</strong> - Score: ${Math.round((item.json.score || 0) * 100)}% - ${item.json.status === 'skipped' ? '❌ Non retenu' : '✅ Retenu'}</li>`).join('') }}\n</ul>\n<p><em>Agent Veille AO - Paris Nord Business School</em></p>",
+        "options": {}
+      },
+      "id": "daily-summary",
+      "name": "📊 Résumé Quotidien",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2160, 520]
+    }
+  ],
+  "connections": {
+    "⏰ Veille Programmée (6h)": {
+      "main": [
+        [
+          { "node": "🏛️ Scrape BOAMP", "type": "main", "index": 0 },
+          { "node": "🏢 Scrape PLACE", "type": "main", "index": 0 },
+          { "node": "🇪🇺 Scrape TED Europa", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🔗 Webhook Manuel": {
+      "main": [
+        [
+          { "node": "🏛️ Scrape BOAMP", "type": "main", "index": 0 },
+          { "node": "🏢 Scrape PLACE", "type": "main", "index": 0 },
+          { "node": "🇪🇺 Scrape TED Europa", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🏛️ Scrape BOAMP": {
+      "main": [
+        [{ "node": "🔀 Fusionner Résultats", "type": "main", "index": 0 }]
+      ]
+    },
+    "🏢 Scrape PLACE": {
+      "main": [
+        [{ "node": "🔀 Fusionner Résultats", "type": "main", "index": 1 }]
+      ]
+    },
+    "🇪🇺 Scrape TED Europa": {
+      "main": [
+        [{ "node": "🔀 Fusionner Résultats", "type": "main", "index": 2 }]
+      ]
+    },
+    "🔀 Fusionner Résultats": {
+      "main": [
+        [{ "node": "⚙️ Normaliser & Dédupliquer", "type": "main", "index": 0 }]
+      ]
+    },
+    "⚙️ Normaliser & Dédupliquer": {
+      "main": [
+        [{ "node": "🎯 Filtrer Formation", "type": "main", "index": 0 }]
+      ]
+    },
+    "🎯 Filtrer Formation": {
+      "main": [
+        [{ "node": "🤖 Analyse LangGraph", "type": "main", "index": 0 }]
+      ]
+    },
+    "🤖 Analyse LangGraph": {
+      "main": [
+        [{ "node": "📊 Score ≥ 0.6 ?", "type": "main", "index": 0 }]
+      ]
+    },
+    "📊 Score ≥ 0.6 ?": {
+      "main": [
+        [{ "node": "📝 Générer Réponse AO", "type": "main", "index": 0 }],
+        [{ "node": "📋 Log AO Ignoré", "type": "main", "index": 0 }]
+      ]
+    },
+    "📝 Générer Réponse AO": {
+      "main": [
+        [
+          { "node": "📧 Email AO Pertinent", "type": "main", "index": 0 },
+          { "node": "💾 Sauvegarder Résultats", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "📋 Log AO Ignoré": {
+      "main": [
+        [{ "node": "📊 Résumé Quotidien", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "veille-ao" },
+    { "name": "formation" },
+    { "name": "pnbs" },
+    { "name": "langgraph" }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2026-04-10T00:00:00.000Z",
+  "versionId": "1"
+}
